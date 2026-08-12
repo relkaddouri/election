@@ -81,7 +81,10 @@ docs/                   Cahier des charges
 Le projet manipule des données personnelles (CIN, téléphones). Dépôt à garder
 **privé**.
 
-- `SUPABASE_SERVICE_ROLE_KEY` contourne le RLS : usage serveur exclusivement,
+- Le projet utilise le format d'API keys actuel de Supabase
+  (`sb_publishable_…` / `sb_secret_…`), pas les anciennes clés JWT
+  `anon` / `service_role`.
+- `SUPABASE_SECRET_KEY` contourne le RLS : usage serveur exclusivement,
   jamais dans un fichier `"use client"`, jamais préfixé `NEXT_PUBLIC_`.
 - Seul `.env.example` est versionné ; `.env*` est ignoré par git.
 - Le RLS est la ligne de défense principale : les contrôles côté client sont un
