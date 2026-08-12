@@ -1,39 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# تدبير الناخبين — Application de gestion des électeurs
 
-## Getting Started
+Application Next.js (App Router) + TypeScript + Tailwind CSS v4, interface
+**100 % arabe en RTL**, backend **Supabase** (Auth + PostgreSQL + Storage).
 
-First, run the development server:
+Cahier des charges : [`docs/brief-app-electeurs.md`](docs/brief-app-electeurs.md).
+
+## Démarrage
 
 ```bash
+npm install
+cp .env.example .env.local   # puis renseigner les clés Supabase
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+L'application démarre sans clés Supabase (le rafraîchissement de session est
+alors simplement désactivé), mais toute fonctionnalité liée aux données en aura
+besoin.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script              | Rôle                                    |
+| ------------------- | --------------------------------------- |
+| `npm run dev`       | Serveur de développement                |
+| `npm run build`     | Build de production                     |
+| `npm run typecheck` | `tsc --noEmit`                          |
+| `npm run lint`      | ESLint (`lint:fix` pour corriger)       |
+| `npm run format`    | Prettier (`format:check` pour vérifier) |
 
-## Learn More
+## Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+  app/                  Routes App Router (<html lang="ar" dir="rtl">)
+  components/
+    ui/                 Primitives (Button…)
+    layout/             Coquille applicative, navigation
+  lib/
+    supabase/
+      client.ts         Client navigateur (RLS)
+      server.ts         Client serveur (RLS) + client admin (service_role)
+      proxy.ts          Rafraîchissement de session
+    constants.ts        Rôles, navigation arabe, constantes métier
+    env.ts              Variables d'environnement validées
+    utils.ts            cn(), normalisation CIN / chiffres arabes
+  types/
+    database.ts         Types de la base (à régénérer via Supabase CLI)
+    index.ts            Alias métier (Electeur, Cadre, Profile…)
+  proxy.ts              Ex-middleware.ts (renommé dans Next.js 16)
+docs/                   Cahier des charges
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Conventions
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### RTL et arabe
 
-## Deploy on Vercel
+- `dir="rtl"` et `lang="ar"` sont posés sur `<html>` dans
+  [`src/app/layout.tsx`](src/app/layout.tsx) : tout en hérite.
+- **Utiliser les propriétés logiques Tailwind** (`ms-*`, `me-*`, `ps-*`, `pe-*`,
+  `start-*`, `end-*`, `text-start`, `text-end`) et jamais `ml-*`, `mr-*`,
+  `left-*`, `right-*`, `text-left`, `text-right` — sinon la mise en page casse
+  en RTL.
+- Police : **Cairo** via `next/font/google`, sous-ensembles `arabic` + `latin`,
+  auto-hébergée (aucune requête vers Google).
+- CIN, téléphones et numéros de bureau de vote : appliquer la classe
+  `.ltr-field` pour que les chiffres restent lisibles de gauche à droite au sein
+  d'un texte arabe.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Responsive
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# election
-# election
+- **Mobile-first** : styles de base pour 360px, puis `sm:` / `md:` / `lg:` /
+  `xl:` pour enrichir. Un breakpoint `xs` (360px) est disponible.
+- Cible de test : 360 / 768 / 1024 / 1920 px.
+- Zones tactiles ≥ 44px : utiliser `min-h-touch` / `min-w-touch` (le composant
+  `Button` les applique déjà).
+- Les tableaux deviennent des cartes empilées sur mobile ; les filtres passent
+  dans un tiroir.
+
+### Sécurité des données
+
+Le projet manipule des données personnelles (CIN, téléphones). Dépôt à garder
+**privé**.
+
+- `SUPABASE_SERVICE_ROLE_KEY` contourne le RLS : usage serveur exclusivement,
+  jamais dans un fichier `"use client"`, jamais préfixé `NEXT_PUBLIC_`.
+- Seul `.env.example` est versionné ; `.env*` est ignoré par git.
+- Le RLS est la ligne de défense principale : les contrôles côté client sont un
+  confort, pas une protection.
+
+## Étape suivante
+
+Prompt 2 du cahier des charges : migrations SQL Supabase (`supabase/migrations/`),
+contrainte `UNIQUE` sur `electeurs.cin`, RLS et policies par rôle. Une fois les
+tables créées, régénérer les types :
+
+```bash
+npx supabase gen types typescript --project-id <project-ref> > src/types/database.ts
+```
 # election
