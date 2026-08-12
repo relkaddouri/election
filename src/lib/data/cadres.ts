@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
-import type { Cadre, CadreWithCount, Electeur } from "@/types";
+import type { Cadre, CadreWithCount } from "@/types";
 
 /**
  * Neutralise les caractères que PostgREST interprète structurellement dans une
@@ -53,69 +53,6 @@ export async function getCadre(id: string): Promise<CadreWithCount | null> {
     .eq("id", id)
     .maybeSingle();
   return data;
-}
-
-export type ElecteurFilters = {
-  search?: string;
-  pollingStation?: string;
-  pollingLocation?: string;
-};
-
-/** Électeurs rattachés à un cadre, avec recherche et filtres locaux. */
-export async function listElecteursForCadre(
-  cadreId: string,
-  { search, pollingStation, pollingLocation }: ElecteurFilters,
-): Promise<Electeur[]> {
-  const supabase = await createClient();
-
-  let query = supabase
-    .from("electeurs")
-    .select("*")
-    .eq("cadre_id", cadreId)
-    .order("created_at", { ascending: true });
-
-  const term = search ? sanitizeSearchTerm(search) : "";
-  if (term) {
-    query = query.or(
-      `full_name.ilike.%${term}%,cin.ilike.%${term}%,phone.ilike.%${term}%`,
-    );
-  }
-  if (pollingStation)
-    query = query.eq("polling_station_number", pollingStation);
-  if (pollingLocation) query = query.eq("polling_location", pollingLocation);
-
-  const { data, error } = await query;
-  if (error)
-    throw new Error(`Lecture des électeurs impossible : ${error.message}`);
-  return data ?? [];
-}
-
-/**
- * Valeurs distinctes présentes chez les électeurs d'un cadre, pour alimenter
- * les listes de filtres sans proposer d'option qui ne donnerait aucun résultat.
- */
-export async function getElecteurFilterOptions(cadreId: string): Promise<{
-  pollingStations: string[];
-  pollingLocations: string[];
-}> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("electeurs")
-    .select("polling_station_number, polling_location")
-    .eq("cadre_id", cadreId);
-
-  const stations = new Set<string>();
-  const locations = new Set<string>();
-  for (const row of data ?? []) {
-    if (row.polling_station_number) stations.add(row.polling_station_number);
-    if (row.polling_location) locations.add(row.polling_location);
-  }
-
-  const collator = new Intl.Collator("ar");
-  return {
-    pollingStations: [...stations].sort(collator.compare),
-    pollingLocations: [...locations].sort(collator.compare),
-  };
 }
 
 /**

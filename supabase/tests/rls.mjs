@@ -99,20 +99,44 @@ try {
     .insert({ user_id: ids.saisie, cadre_id: cadreA });
 
   await admin.from("electeurs").insert([
-    { cadre_id: cadreA, cin: "AA1111", full_name: "ناخب أ" },
-    { cadre_id: cadreB, cin: "BB2222", full_name: "ناخب ب" },
+    {
+      cadre_id: cadreA,
+      cin: "AA1111",
+      full_name: "ناخب أ",
+      phone: "0600000000",
+      polling_station_number: "1",
+      polling_location: "مكان",
+    },
+    {
+      cadre_id: cadreB,
+      cin: "BB2222",
+      full_name: "ناخب ب",
+      phone: "0600000000",
+      polling_station_number: "1",
+      polling_location: "مكان",
+    },
   ]);
 
   // --- Normalisation + unicité CIN ------------------------------------------
   console.log("\n— Unicité et normalisation du CIN (contrainte PostgreSQL) —");
-  const dup = await admin
-    .from("electeurs")
-    .insert({ cadre_id: cadreA, cin: "AA1111", full_name: "doublon" });
+  const dup = await admin.from("electeurs").insert({
+    cadre_id: cadreA,
+    cin: "AA1111",
+    full_name: "doublon",
+    phone: "0600000000",
+    polling_station_number: "1",
+    polling_location: "مكان",
+  });
   check("CIN identique rejeté", dup.error?.code === "23505", dup.error?.code);
 
-  const dupArabe = await admin
-    .from("electeurs")
-    .insert({ cadre_id: cadreA, cin: " aa١١١١ ", full_name: "doublon arabe" });
+  const dupArabe = await admin.from("electeurs").insert({
+    cadre_id: cadreA,
+    cin: " aa١١١١ ",
+    full_name: "doublon arabe",
+    phone: "0600000000",
+    polling_station_number: "1",
+    polling_location: "مكان",
+  });
   check(
     "« aa١١١١ » (chiffres arabes + espaces + minuscules) reconnu comme AA1111",
     dupArabe.error?.code === "23505",
@@ -133,18 +157,63 @@ try {
 
   // L'unicité est volontairement limitée à chaque table : un encadrant est
   // souvent lui-même électeur de la circonscription.
-  const memeCin = await admin
-    .from("electeurs")
-    .insert({ cadre_id: cadreA, cin: "TESTCADREA", full_name: "المؤطر كناخب" });
+  const memeCin = await admin.from("electeurs").insert({
+    cadre_id: cadreA,
+    cin: "TESTCADREA",
+    full_name: "المؤطر كناخب",
+    phone: "0600000000",
+    polling_station_number: "1",
+    polling_location: "مكان",
+  });
   check(
     "un cadre PEUT aussi être saisi comme électeur avec le même CIN",
     !memeCin.error,
     memeCin.error?.code ?? "accepté",
   );
 
+  // --- Détection de doublon d'électeur --------------------------------------
+  console.log("\n— Détection de doublon d'électeur (sections 15-16) —");
+  const s = await session(users.saisie);
+
+  // BB2222 appartient au cadre B, hors du périmètre du compte « saisie » :
+  // c'est précisément le cas qu'une requête filtrée par le RLS raterait.
+  const invisible = await s.from("electeurs").select("cin").eq("cin", "BB2222");
+  check(
+    "l'électeur d'un cadre hors périmètre est bien invisible",
+    invisible.data?.length === 0,
+    `${invisible.data?.length} ligne(s)`,
+  );
+
+  const { data: lookup } = await s.rpc("electeur_cin_lookup", {
+    p_cin: " bb٢٢٢٢ ",
+    p_exclude_id: null,
+  });
+  check(
+    "…mais le doublon est détecté et le cadre nommé",
+    lookup?.length === 1 && lookup[0].cadre_full_name === "مؤطر ب",
+    lookup?.[0]?.cadre_full_name ?? "AUCUN DOUBLON DÉTECTÉ",
+  );
+
+  const { data: libre } = await s.rpc("electeur_cin_lookup", {
+    p_cin: "ZZ999999",
+    p_exclude_id: null,
+  });
+  check("un CIN libre ne remonte aucun doublon", libre?.length === 0);
+
+  // رقم الترتيب : dérivé de la séquence d'insertion, jamais stocké ni saisi.
+  const { data: ordered } = await s
+    .from("electeurs_ordered")
+    .select("order_number, cin")
+    .order("order_number");
+  check(
+    "رقم الترتيب numérote les électeurs à partir de 1, sans trou",
+    ordered?.length > 0 &&
+      ordered.every((row, index) => row.order_number === index + 1),
+    ordered?.map((r) => r.order_number).join(", "),
+  );
+
   // --- saisie ----------------------------------------------------------------
   console.log("\n— Rôle « saisie » (périmètre user_cadres) —");
-  const s = await session(users.saisie);
   const sCadres = await s.from("cadres").select("id, full_name");
   check(
     "ne voit que le cadre qui lui est affecté",
@@ -160,13 +229,23 @@ try {
     cins.includes("AA1111") && !cins.includes("BB2222"),
     cins.join(", "),
   );
-  const sInsertOk = await s
-    .from("electeurs")
-    .insert({ cadre_id: cadreA, cin: "AA3333", full_name: "ناخب جديد" });
+  const sInsertOk = await s.from("electeurs").insert({
+    cadre_id: cadreA,
+    cin: "AA3333",
+    full_name: "ناخب جديد",
+    phone: "0600000000",
+    polling_station_number: "1",
+    polling_location: "مكان",
+  });
   check("peut ajouter un électeur dans son cadre", !sInsertOk.error);
-  const sInsertKo = await s
-    .from("electeurs")
-    .insert({ cadre_id: cadreB, cin: "CC4444", full_name: "hors périmètre" });
+  const sInsertKo = await s.from("electeurs").insert({
+    cadre_id: cadreB,
+    cin: "CC4444",
+    full_name: "hors périmètre",
+    phone: "0600000000",
+    polling_station_number: "1",
+    polling_location: "مكان",
+  });
   check(
     "ne peut PAS ajouter dans un cadre hors périmètre",
     sInsertKo.error?.code === "42501",
@@ -223,9 +302,14 @@ try {
     pElecteurs.data?.length >= 3,
     `${pElecteurs.data?.length} électeur(s)`,
   );
-  const pInsert = await p
-    .from("electeurs")
-    .insert({ cadre_id: cadreA, cin: "PP5555", full_name: "interdit" });
+  const pInsert = await p.from("electeurs").insert({
+    cadre_id: cadreA,
+    cin: "PP5555",
+    full_name: "interdit",
+    phone: "0600000000",
+    polling_station_number: "1",
+    polling_location: "مكان",
+  });
   check(
     "ne peut PAS créer d'électeur",
     pInsert.error?.code === "42501",

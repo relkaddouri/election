@@ -82,3 +82,11 @@ export const DEFAULT_PAGE_SIZE = 25;
 
 /** Délai d'anti-rebond de la vérification CIN en temps réel (ms). */
 export const CIN_CHECK_DEBOUNCE_MS = 400;
+
+/**
+ * Message de doublon imposé par le cahier des charges (sections 15-16).
+ *
+ * Défini ici et non dans `actions/electeurs.ts` : un module `"use server"` ne
+ * peut exporter que des fonctions asynchrones.
+ */
+export const ELECTEUR_DUPLICATE_MESSAGE = "هذا الناخب مسجل مسبقاً في النظام";

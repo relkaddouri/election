@@ -26,7 +26,21 @@ export function SearchInput({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [value, setValue] = useState(searchParams.get(paramName) ?? "");
+  const urlValue = searchParams.get(paramName) ?? "";
+  const [value, setValue] = useState(urlValue);
+
+  // Le champ doit se réaligner quand l'URL change sans passer par lui :
+  // « إعادة ضبط الفلاتر » ou le bouton retour du navigateur. Sans cela,
+  // l'effet ci-dessous réécrirait aussitôt le paramètre tout juste effacé.
+  //
+  // Ajustement pendant le rendu, motif recommandé par React pour synchroniser
+  // un état sur une prop. Quand c'est le champ lui-même qui a poussé la
+  // valeur, `urlValue` rejoint `value` et rien ne se déclenche.
+  const [lastUrlValue, setLastUrlValue] = useState(urlValue);
+  if (urlValue !== lastUrlValue) {
+    setLastUrlValue(urlValue);
+    if (urlValue !== value) setValue(urlValue);
+  }
 
   useEffect(() => {
     const current = searchParams.get(paramName) ?? "";
@@ -38,6 +52,8 @@ export function SearchInput({
       const params = new URLSearchParams(searchParams);
       if (value) params.set(paramName, value);
       else params.delete(paramName);
+      // Une nouvelle recherche repart de la première page.
+      params.delete("page");
       router.replace(`${pathname}?${params}`, { scroll: false });
     }, delay);
 

@@ -19,15 +19,16 @@ besoin.
 
 ## Scripts
 
-| Script              | Rôle                                    |
-| ------------------- | --------------------------------------- |
-| `npm run dev`       | Serveur de développement                |
-| `npm run build`     | Build de production                     |
-| `npm run typecheck` | `tsc --noEmit`                          |
-| `npm run lint`      | ESLint (`lint:fix` pour corriger)       |
-| `npm run format`    | Prettier (`format:check` pour vérifier) |
-| `npm run test:rls`  | Vérifie les policies RLS sur la base    |
-| `npm run db:push`   | Applique les migrations en attente      |
+| Script                   | Rôle                                    |
+| ------------------------ | --------------------------------------- |
+| `npm run dev`            | Serveur de développement                |
+| `npm run build`          | Build de production                     |
+| `npm run typecheck`      | `tsc --noEmit`                          |
+| `npm run lint`           | ESLint (`lint:fix` pour corriger)       |
+| `npm run format`         | Prettier (`format:check` pour vérifier) |
+| `npm run test:rls`       | Vérifie les policies RLS sur la base    |
+| `npm run db:push`        | Applique les migrations en attente      |
+| `npm run seed:electeurs` | Électeurs de test (`create` / `drop`)   |
 
 ## Structure
 
@@ -108,12 +109,15 @@ Le projet manipule des données personnelles (CIN, téléphones). Dépôt à gar
 Migrations dans [`supabase/migrations/`](supabase/migrations/), appliquées sur
 le projet Supabase.
 
-| Migration                    | Contenu                                      |
-| ---------------------------- | -------------------------------------------- |
-| `…_initial_schema.sql`       | Tables, index, triggers, activation du RLS   |
-| `…_rls_policies.sql`         | Fonctions d'aide et policies par rôle        |
-| `…_storage_logo.sql`         | Bucket `public-assets` pour le logo du parti |
-| `…_cadres_person_fields.sql` | Le cadre devient une personne identifiée     |
+| Migration                             | Contenu                                      |
+| ------------------------------------- | -------------------------------------------- |
+| `…_initial_schema.sql`                | Tables, index, triggers, activation du RLS   |
+| `…_rls_policies.sql`                  | Fonctions d'aide et policies par rôle        |
+| `…_storage_logo.sql`                  | Bucket `public-assets` pour le logo du parti |
+| `…_cadres_person_fields.sql`          | Le cadre devient une personne identifiée     |
+| `…_cadres_view_and_cin_check.sql`     | Vue de comptage + vérification CIN           |
+| `…_electeurs_view_and_cin_lookup.sql` | رقم الترتيب + détection de doublon           |
+| `…_electeurs_insertion_sequence.sql`  | Ordre d'insertion déterministe               |
 
 ```bash
 npm run db:push
@@ -125,9 +129,23 @@ sur `supabase_migrations.schema_migrations` (la même table que la CLI Supabase)
 ### Règles structurantes
 
 - **`cadres` et `electeurs` portent les mêmes champs personne** : `cin`,
-  `full_name`, `phone`, `polling_station_number`, `polling_location`. Seul
-  `phone` est facultatif — des deux côtés. Un même trigger
-  (`normalize_person_row`) sert les deux tables.
+  `full_name`, `phone`, `polling_station_number`, `polling_location`. Un même
+  trigger (`normalize_person_row`) sert les deux tables.
+- **Obligation des champs — la seule différence entre les deux tables :**
+
+  |                          | `cadres`   | `electeurs` |
+  | ------------------------ | ---------- | ----------- |
+  | `cin`                    | requis     | requis      |
+  | `full_name`              | requis     | requis      |
+  | `phone`                  | facultatif | **requis**  |
+  | `polling_station_number` | requis     | **requis**  |
+  | `polling_location`       | requis     | **requis**  |
+
+  Un électeur sans téléphone ni bureau de vote n'est pas exploitable le jour du
+  scrutin. Les contraintes `CHECK (btrim(…) <> '')` rattrapent les saisies
+  composées uniquement d'espaces, que le trigger de normalisation réduit à
+  `NULL`.
+
 - **`cin` est `UNIQUE` au niveau PostgreSQL dans chaque table.** Le trigger
   normalise le CIN avant écriture (chiffres arabes → occidentaux, espaces
   supprimés, majuscules) : l'unicité porte donc sur la forme canonique. Le code
@@ -144,6 +162,31 @@ sur `supabase_migrations.schema_migrations` (la même table que la CLI Supabase)
   pour un `super_admin`.
 - **`is_active = false` coupe tout accès**, sans avoir à supprimer le compte.
 - Supprimer un cadre portant des électeurs échoue (`on delete restrict`).
+- **Le nombre d'électeurs n'est jamais stocké.** La vue `cadres_with_counts`
+  (en `security_invoker`, donc soumise au RLS de l'appelant) le dérive d'un
+  `COUNT` : aucune colonne compteur, donc aucune désynchronisation possible.
+- **La vérification du CIN passe par `cadre_cin_exists`**, une fonction
+  `SECURITY DEFINER` qui ne renvoie qu'un booléen. Une requête ordinaire serait
+  filtrée par le RLS et répondrait « CIN libre » pour un cadre hors périmètre,
+  juste avant que la contrainte `UNIQUE` ne rejette l'écriture.
+- **`electeur_cin_lookup` va plus loin : elle nomme le cadre détenteur**, comme
+  l'exige le cahier des charges. Compromis assumé — un utilisateur « saisie »
+  apprend qu'un CIN est pris par un cadre hors de son périmètre, et par qui.
+  C'est le but même de la détection de doublons en campagne. Rien d'autre ne
+  fuit : ni identité de l'électeur, ni téléphone, ni bureau de vote.
+- **Les listes sont paginées côté PostgreSQL** (`range` + `count: "exact"`).
+  « عدد النتائج » porte sur le total filtré, pas sur la page affichée. Le tri
+  inclut `cadre_id` en départage : deux cadres homonymes suffiraient sinon à
+  faire apparaître une ligne sur deux pages, ou sur aucune.
+- **Les valeurs des filtres viennent d'une vue `DISTINCT`**
+  (`electeurs_filter_options`), et non d'un chargement de toutes les lignes.
+  Elle est restreinte au cadre sélectionné : aucune option proposée ne peut
+  mener à zéro résultat.
+- **رقم الترتيب n'est jamais stocké.** La vue `electeurs_ordered` le calcule par
+  `row_number()` au sein de chaque cadre, ordonné par `electeurs.seq` (identité
+  monotone). Une colonne persistée se trouerait à la première suppression ;
+  départager par `created_at` échouerait sur les insertions en lot, où `now()`
+  est identique pour toutes les lignes.
 
 ### Périmètre par rôle
 
@@ -160,9 +203,10 @@ sur `supabase_migrations.schema_migrations` (la même table que la CLI Supabase)
 npm run test:rls
 ```
 
-28 assertions sur de vraies sessions authentifiées (périmètre `saisie`,
+32 assertions sur de vraies sessions authentifiées (périmètre `saisie`,
 lecture seule du `parlementaire`, unicité CIN dans chaque table, cadre pouvant
-aussi être électeur, journal append-only, compte désactivé, accès anonyme).
+aussi être électeur, détection de doublon hors périmètre, رقم الترتيب sans trou,
+journal append-only, compte désactivé, accès anonyme).
 Voir [`supabase/tests/rls.mjs`](supabase/tests/rls.mjs).
 
 ### Régénérer les types
@@ -222,5 +266,7 @@ node --env-file=.env.local supabase/tests/seed-temp-users.mjs drop
 
 ## Étape suivante
 
-Prompt 4 du cahier des charges : CRUD des cadres (المؤطرون), avec comptage
-automatique des électeurs et page de détail.
+Prompt 6 du cahier des charges : filtres combinés sur « الناخبون » (cadre,
+bureau, lieu), tiroir de filtres sur mobile, et pagination — la liste actuelle
+charge tous les résultats, ce qui ne tiendra pas à plusieurs milliers
+d'électeurs.

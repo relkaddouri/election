@@ -94,9 +94,9 @@ export type Database = {
           /** Rendu unique par une contrainte UNIQUE PostgreSQL. */
           cin: string;
           full_name: string;
-          phone: string | null;
-          polling_station_number: string | null;
-          polling_location: string | null;
+          phone: string;
+          polling_station_number: string;
+          polling_location: string;
           created_at: string;
           updated_at: string;
         };
@@ -105,9 +105,9 @@ export type Database = {
           cadre_id: string;
           cin: string;
           full_name: string;
-          phone?: string | null;
-          polling_station_number?: string | null;
-          polling_location?: string | null;
+          phone: string;
+          polling_station_number: string;
+          polling_location: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -116,9 +116,9 @@ export type Database = {
           cadre_id?: string;
           cin?: string;
           full_name?: string;
-          phone?: string | null;
-          polling_station_number?: string | null;
-          polling_location?: string | null;
+          phone?: string;
+          polling_station_number?: string;
+          polling_location?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -236,6 +236,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      /** Couples distincts (cadre, bureau, lieu) chez les électeurs visibles. */
+      electeurs_filter_options: {
+        Row: {
+          cadre_id: string;
+          polling_station_number: string;
+          polling_location: string;
+        };
+        Relationships: [];
+      };
+      /** Électeurs + رقم الترتيب calculé par cadre + nom du cadre. */
+      electeurs_ordered: {
+        Row: {
+          id: string;
+          cadre_id: string;
+          cin: string;
+          full_name: string;
+          phone: string;
+          polling_station_number: string;
+          polling_location: string;
+          created_at: string;
+          updated_at: string;
+          cadre_full_name: string;
+          /** رقم الترتيب — jamais saisi ni stocké. */
+          order_number: number;
+        };
+        Relationships: [];
+      };
     };
     Functions: {
       /** Vrai si le CIN est déjà pris par un autre cadre, tous périmètres RLS
@@ -243,6 +270,12 @@ export type Database = {
       cadre_cin_exists: {
         Args: { p_cin: string; p_exclude_id?: string | null };
         Returns: boolean;
+      };
+      /** Cadre détenteur d'un CIN d'électeur, tous périmètres RLS confondus.
+       *  Ne renvoie que l'identité du cadre, rien de l'électeur. */
+      electeur_cin_lookup: {
+        Args: { p_cin: string; p_exclude_id?: string | null };
+        Returns: { cadre_id: string; cadre_full_name: string }[];
       };
     };
     Enums: {

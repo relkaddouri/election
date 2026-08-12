@@ -12,7 +12,8 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test:rls": "node --env-file=.env.local supabase/tests/rls.mjs",
-    "db:push": "node --env-file=.env.local supabase/apply-migrations.mjs"
+    "db:push": "node --env-file=.env.local supabase/apply-migrations.mjs",
+    "seed:electeurs": "node --env-file=.env.local supabase/tests/seed-electeurs.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

@@ -20,10 +20,15 @@ export type UserCadre = Tables<"user_cadres">;
 export type CadreWithCount =
   Database["public"]["Views"]["cadres_with_counts"]["Row"];
 
-/** Électeur accompagné du cadre dont il dépend. */
-export type ElecteurWithCadre = Electeur & {
-  cadre: Pick<Cadre, "id" | "full_name"> | null;
-};
+/**
+ * Électeur enrichi de son رقم الترتيب et du nom de son cadre.
+ * Vient de la vue `electeurs_ordered`.
+ */
+export type ElecteurWithOrder =
+  Database["public"]["Views"]["electeurs_ordered"]["Row"];
+
+/** Cadre détenteur d'un CIN déjà pris. */
+export type DuplicateCadre = { cadreId: string; cadreFullName: string };
 
 /** Utilisateur connecté, tel que consommé par l'UI. */
 export type SessionUser = {
