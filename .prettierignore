@@ -1,0 +1,11 @@
+# Documents de cadrage : source de vérité, ne pas reformater
+docs
+
+node_modules
+.next
+out
+build
+coverage
+package-lock.json
+next-env.d.ts
+*.min.*

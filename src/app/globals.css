@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+/* -------------------------------------------------------------------------
+   Design tokens (Tailwind v4 — configuration CSS-first, pas de tailwind.config.js)
+   ------------------------------------------------------------------------- */
+@theme {
+  /* Police arabe : Cairo, chargée via next/font dans app/layout.tsx */
+  --font-sans:
+    var(--font-cairo), ui-sans-serif, system-ui, "Segoe UI", Tahoma, sans-serif;
+
+  /* Breakpoint supplémentaire pour les petits smartphones (cible : 360px) */
+  --breakpoint-xs: 22.5rem;
+
+  /* Couleurs de marque */
+  --color-brand-50: oklch(0.97 0.02 155);
+  --color-brand-100: oklch(0.94 0.04 155);
+  --color-brand-200: oklch(0.88 0.07 155);
+  --color-brand-300: oklch(0.8 0.11 155);
+  --color-brand-400: oklch(0.71 0.14 155);
+  --color-brand-500: oklch(0.63 0.15 155);
+  --color-brand-600: oklch(0.54 0.13 155);
+  --color-brand-700: oklch(0.45 0.11 155);
+  --color-brand-800: oklch(0.37 0.09 155);
+  --color-brand-900: oklch(0.3 0.07 155);
+
+  /* Surfaces neutres */
+  --color-surface: oklch(1 0 0);
+  --color-surface-muted: oklch(0.97 0.003 250);
+  --color-line: oklch(0.91 0.005 250);
+
+  /* Taille tactile minimale (~44px) — cf. brief §3bis */
+  --spacing-touch: 2.75rem;
+
+  --animate-fade-in: fade-in 150ms ease-out;
+  --animate-drawer-in: drawer-in 200ms ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Le tiroir est ancré côté `start`, donc à droite en RTL : il entre depuis la
+   droite, d'où un translate positif. */
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Base
+   ------------------------------------------------------------------------- */
+@layer base {
+  html {
+    /* Empêche iOS de zoomer/agrandir le texte en rotation paysage */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-surface-muted text-slate-900 antialiased;
+    font-family: var(--font-sans);
+  }
+
+  /* Le focus doit rester visible : usage clavier en QG de campagne */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand-600;
+  }
+
+  /* Confort tactile terrain : pas de cible < 44px sur les contrôles */
+  button,
+  [role="button"],
+  a[href],
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+}
+
+/* -------------------------------------------------------------------------
+   Utilitaires RTL
+   ------------------------------------------------------------------------- */
+@utility ltr-field {
+  /* CIN, téléphones, numéros de bureau de vote : chiffres lus de gauche à
+     droite même à l'intérieur d'un paragraphe arabe. */
+  direction: ltr;
+  text-align: right;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
