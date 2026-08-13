@@ -1,6 +1,7 @@
 import "server-only";
 
-import puppeteer, { type Browser } from "puppeteer";
+import chromium from "@sparticuz/chromium";
+import puppeteerCore, { type Browser } from "puppeteer-core";
 
 /**
  * Instance Chromium partagée.
@@ -15,12 +16,18 @@ async function getBrowser(): Promise<Browser> {
   const existing = await browserPromise?.catch(() => null);
   if (existing?.connected) return existing;
 
-  browserPromise = puppeteer.launch({
-    headless: true,
-    // `--no-sandbox` est requis dans la plupart des conteneurs Linux, où le
-    // bac à sable de Chromium ne peut pas s'initialiser.
-    args: ["--no-sandbox", "--disable-dev-shm-usage"],
+  const isDev = process.env.NODE_ENV === "development";
+
+  browserPromise = puppeteerCore.launch({
+    args: isDev ? ["--no-sandbox", "--disable-dev-shm-usage"] : chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: isDev
+      ? process.env.CHROME_EXECUTABLE_PATH ||
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" // Modifiez ce chemin si vous êtes sur Windows/Linux en local
+      : await chromium.executablePath(),
+    headless: isDev ? true : chromium.headless,
   });
+
   return browserPromise;
 }
 
