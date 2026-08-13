@@ -11,10 +11,14 @@ async function getBrowser(): Promise<Browser> {
 
   const isDev = process.env.NODE_ENV === "development";
 
+  // URL de secours pour Vercel si le binaire local n'est pas extrait par le bundler
+  const remoteExecutablePath =
+    "https://github.com/Sparticuz/chromium/releases/download/v131.0.0/chromium-v131.0.0-pack.tar";
+
   const executablePath = isDev
     ? process.env.CHROME_EXECUTABLE_PATH ||
       "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-    : await chromium.executablePath();
+    : await chromium.executablePath(remoteExecutablePath);
 
   browserPromise = puppeteerCore.launch({
     args: isDev ? ["--no-sandbox", "--disable-dev-shm-usage"] : chromium.args,
