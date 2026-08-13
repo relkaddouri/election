@@ -60,6 +60,10 @@ export type Database = {
           polling_station_number: string;
           polling_location: string;
           is_active: boolean;
+          /** Rempli par le trigger `set_row_authorship` ; toute valeur envoyée
+           *  par le client est écrasée. Nul pour les écritures sans session. */
+          created_by: string | null;
+          updated_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -97,6 +101,10 @@ export type Database = {
           phone: string;
           polling_station_number: string;
           polling_location: string;
+          /** Rempli par le trigger `set_row_authorship` ; toute valeur envoyée
+           *  par le client est écrasée. Nul pour les écritures sans session. */
+          created_by: string | null;
+          updated_by: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -232,7 +240,20 @@ export type Database = {
           is_active: boolean;
           created_at: string;
           updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
           electeurs_count: number;
+        };
+        Relationships: [];
+      };
+      /** Résolution identifiant -> nom affichable, lisible par tout compte
+       *  authentifié. N'expose que `id` et `full_name` : la policy
+       *  `profiles_select` empêcherait sinon un « saisie » de voir le nom de
+       *  l'auteur d'un cadre créé par un collègue. */
+      user_display_names: {
+        Row: {
+          id: string;
+          full_name: string;
         };
         Relationships: [];
       };
@@ -257,6 +278,8 @@ export type Database = {
           polling_location: string;
           created_at: string;
           updated_at: string;
+          created_by: string | null;
+          updated_by: string | null;
           cadre_full_name: string;
           /** رقم الترتيب — jamais saisi ni stocké. */
           order_number: number;

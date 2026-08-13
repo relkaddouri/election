@@ -28,46 +28,6 @@ Contraintes précises :
 
 ---
 
-## 1bis. Modifications demandées (v2 du brief)
-
-### a) Traçabilité — colonnes "Ajouté par" / "Modifié par"
-
-Sur les tables **cadres** et **électeurs**, ajouter deux colonnes visibles dans l'interface (en plus des dates déjà prévues) :
-
-| Champ technique | Libellé arabe |
-| --- | --- |
-| created_by | أضيف بواسطة |
-| updated_by | عدل بواسطة |
-
-- Ces colonnes affichent le **nom de l'utilisateur** qui a créé / modifié la fiche (pas juste son id).
-- Elles se remplissent **automatiquement** (utilisateur connecté au moment de l'action), jamais saisies manuellement.
-- Elles apparaissent dans les tableaux (colonne optionnelle/masquable sur mobile pour ne pas surcharger l'affichage — voir section responsive) et dans le détail d'une fiche.
-- Techniquement : `created_by uuid references profiles(id)` et `updated_by uuid references profiles(id)` sur `cadres` et `electeurs`.
-
-### b) Rôle "saisie" — droits sur les cadres
-
-Mise à jour de la section 17-18 : le rôle **saisie** peut désormais :
-
-| Fonction | Super Admin | Saisie |
-| --- | :---: | :---: |
-| Créer un cadre | ✅ | ✅ |
-| Modifier un cadre | ✅ | ✅ |
-| **Supprimer un cadre** | ✅ | ❌ |
-
-Seul le **Super Admin** peut supprimer un cadre. Le rôle saisie reste limité à ses cadres autorisés (`user_cadres`) pour la modification — il ne modifie pas les cadres d'un autre utilisateur, sauf si le Super Admin l'y autorise explicitement.
-
-### c) Gestion des utilisateurs — suppression de l'email, modification + mot de passe
-
-- Le champ **email** est retiré du formulaire de création/modification d'utilisateur (l'app n'en a pas besoin en usage interne à 2-3 personnes).
-- ⚠️ Point technique important : **Supabase Auth utilise l'email par défaut** comme identifiant de connexion. Pour s'en passer côté interface, deux options :
-  1. **Recommandé (simple à mettre en œuvre)** : l'app génère automatiquement un email technique invisible pour l'utilisateur (ex. `nom.utilisateur@interne.local`), et l'identifiant affiché/utilisé pour se connecter est le **nom d'utilisateur** ou le **téléphone**. L'utilisateur ne voit/saisit jamais d'email.
-  2. **Alternative** : authentification par téléphone + OTP (SMS) via Supabase — plus lourd à mettre en place et nécessite un fournisseur SMS payant, donc pas nécessaire pour un petit projet à 2 personnes.
-- Le Super Admin peut désormais :
-  - **Modifier** un utilisateur existant (nom, téléphone, rôle, cadres assignés) ;
-  - **Réinitialiser/changer le mot de passe** d'un utilisateur directement depuis la page Utilisateurs (via l'API admin de Supabase, `supabase.auth.admin.updateUserById`).
-
----
-
 ## 2. Prompts pour Claude Code
 
 Je te propose une série de prompts **séquentiels**, à donner un par un à Claude Code. Chaque prompt correspond à une étape cohérente du projet. Ne passe au prompt suivant qu'une fois l'étape validée (build qui passe, fonctionnalité testée).
@@ -103,11 +63,9 @@ des charges (docs/brief-app-electeurs.md), crée les migrations SQL Supabase
 pour les tables suivantes :
 
 - profiles (id, full_name, phone, role, is_active, created_at)
-- cadres (id, name, phone, is_active, created_by, updated_by, created_at,
-  updated_at)
+- cadres (id, name, phone, is_active, created_at, updated_at)
 - electeurs (id, cadre_id, cin UNIQUE, full_name, phone,
-  polling_station_number, polling_location, created_by, updated_by,
-  created_at, updated_at)
+  polling_station_number, polling_location, created_at, updated_at)
 - user_cadres (user_id, cadre_id)
 - settings (id, party_name, territorial_community, logo_url, updated_at)
 - audit_logs (id, user_id, action, entity_type, entity_id, created_at)
@@ -115,14 +73,9 @@ pour les tables suivantes :
 Exigences impératives :
 - Contrainte UNIQUE stricte sur electeurs.cin au niveau PostgreSQL
   (pas seulement côté application)
-- created_by et updated_by sont des uuid references profiles(id), remplis
-  automatiquement côté serveur (utilisateur connecté), jamais saisis
-  manuellement
 - Active Row Level Security (RLS) sur toutes les tables
 - Écris les policies RLS de base selon les 3 rôles : super_admin,
   saisie, parlementaire (lecture seule pour ce dernier)
-- Le rôle "saisie" peut créer et modifier des cadres (mais pas les
-  supprimer — DELETE réservé à super_admin uniquement)
 - Un utilisateur "saisie" ne doit voir/modifier que les cadres présents
   dans user_cadres pour son user_id
 - Ajoute les index nécessaires (cin, cadre_id, polling_station_number)
@@ -152,15 +105,9 @@ Crée les pages CRUD pour les "cadres/encadrants" (section 13 du cahier des
 charges) :
 - Liste des cadres avec recherche, responsive (cartes sur mobile, tableau
   sur desktop)
-- Ajout / modification d'un cadre (nom, téléphone) — accessible aux rôles
-  super_admin ET saisie
-- La suppression d'un cadre est réservée au super_admin uniquement (le
-  bouton/action supprimer ne doit même pas être visible pour le rôle saisie)
+- Ajout / modification d'un cadre (nom, téléphone)
 - Le nombre d'électeurs par cadre doit être calculé automatiquement
   (COUNT), jamais saisi manuellement
-- Afficher les colonnes "أضيف بواسطة" (créateur) et "عدل بواسطة" (dernier
-  modificateur) dans le détail du cadre, remplies automatiquement côté
-  serveur ; colonnes masquables sur mobile pour ne pas surcharger l'affichage
 - Page détail d'un cadre avec ses électeurs, recherche et filtres locaux
   (section 11)
 - Tout le texte en arabe, RTL
@@ -184,8 +131,6 @@ cahier des charges).
 - رقم الترتيب (numéro d'ordre) généré automatiquement, jamais saisi
 - Modification d'un électeur : la règle d'unicité CIN s'applique aussi si
   le CIN est modifié
-- Afficher "أضيف بواسطة" et "عدل بواسطة" dans la fiche détail de l'électeur
-  (nom de l'utilisateur, pas son id), remplis automatiquement côté serveur
 - Formulaire 100% responsive : une colonne sur mobile, disposition en
   grille sur desktop
 ```
@@ -245,16 +190,8 @@ serveur pour le PDF, exceljs pour l'Excel).
 Implémente (sections 17-19, 21-22, 24) :
 - Page "الإعدادات" (Super Admin uniquement) : nom du parti, جماعة ترابية,
   upload/changement du logo (Supabase Storage)
-- Page "المستخدمون" (Super Admin uniquement) :
-  - Créer un utilisateur SANS champ email visible : uniquement nom complet,
-    téléphone, nom d'utilisateur (identifiant de connexion), mot de passe,
-    rôle, et cadres assignés (table user_cadres). Générer en interne un
-    email technique invisible (ex. `username@interne.local`) pour
-    satisfaire Supabase Auth, sans jamais l'exposer dans l'UI
-  - Modifier un utilisateur existant (nom, téléphone, rôle, cadres assignés)
-  - Réinitialiser/changer le mot de passe d'un utilisateur depuis cette
-    page (via supabase.auth.admin.updateUserById, appelé depuis une
-    route serveur avec la service role key — jamais côté client)
+- Page "المستخدمون" (Super Admin uniquement) : créer un utilisateur,
+  définir son rôle, l'affecter à un ou plusieurs cadres (table user_cadres)
 - Journal d'audit "سجل العمليات" : enregistrer automatiquement les
   opérations importantes (ajout/modification/suppression d'électeur,
   création de cadre, etc.) avec utilisateur, action, date

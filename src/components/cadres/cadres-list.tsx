@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import type { CadreWithCount } from "@/types";
+import type { CadreWithAuthors } from "@/lib/data/cadres";
 
 function CountBadge({ count }: { count: number }) {
   return (
@@ -18,7 +18,7 @@ function CountBadge({ count }: { count: number }) {
  * téléphone tenu à une main sur le terrain, une carte empilée reste lisible là
  * où un tableau à six colonnes force un défilement latéral.
  */
-export function CadresList({ cadres }: { cadres: CadreWithCount[] }) {
+export function CadresList({ cadres }: { cadres: CadreWithAuthors[] }) {
   if (cadres.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-line bg-surface p-8 text-center">
@@ -79,6 +79,8 @@ export function CadresList({ cadres }: { cadres: CadreWithCount[] }) {
               <th className="p-3 text-start font-semibold">مكتب التصويت</th>
               <th className="p-3 text-start font-semibold">مكان التصويت</th>
               <th className="p-3 text-start font-semibold">عدد الناخبين</th>
+              <th className="p-3 text-start font-semibold">أضيف بواسطة</th>
+              <th className="p-3 text-start font-semibold">عدل بواسطة</th>
             </tr>
           </thead>
           <tbody>
@@ -103,6 +105,12 @@ export function CadresList({ cadres }: { cadres: CadreWithCount[] }) {
                 <td className="p-3">{cadre.polling_location}</td>
                 <td className="p-3">
                   <CountBadge count={cadre.electeurs_count} />
+                </td>
+                <td className="p-3 text-slate-600">
+                  {cadre.createdByName ?? "—"}
+                </td>
+                <td className="p-3 text-slate-600">
+                  {cadre.updatedByName ?? "—"}
                 </td>
               </tr>
             ))}

@@ -1,5 +1,11 @@
 import "server-only";
 
+import {
+  attachAuthorNames,
+  attachAuthorNamesToAll,
+  resolveAuthorNames,
+  type WithAuthorNames,
+} from "@/lib/data/authors";
 import { createClient } from "@/lib/supabase/server";
 import type { Cadre, CadreWithCount } from "@/types";
 
@@ -53,6 +59,26 @@ export async function getCadre(id: string): Promise<CadreWithCount | null> {
     .eq("id", id)
     .maybeSingle();
   return data;
+}
+
+/** Cadre enrichi des noms de son créateur et de son dernier modificateur. */
+export type CadreWithAuthors = WithAuthorNames<CadreWithCount>;
+
+export async function getCadreWithAuthors(
+  id: string,
+): Promise<CadreWithAuthors | null> {
+  const cadre = await getCadre(id);
+  if (!cadre) return null;
+
+  const names = await resolveAuthorNames([cadre.created_by, cadre.updated_by]);
+  return attachAuthorNames(cadre, names);
+}
+
+/** Liste des cadres, enrichie des noms de créateur et de modificateur. */
+export async function listCadresWithAuthors(
+  params: CadreSearchParams,
+): Promise<CadreWithAuthors[]> {
+  return attachAuthorNamesToAll(await listCadres(params));
 }
 
 /**

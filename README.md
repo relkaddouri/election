@@ -126,6 +126,7 @@ le projet Supabase.
 | `…_electeurs_insertion_sequence.sql`  | Ordre d'insertion déterministe               |
 | `…_electeurs_required_fields.sql`     | Téléphone, bureau et lieu obligatoires       |
 | `…_electeurs_filter_options.sql`      | Valeurs distinctes pour les filtres          |
+| `…_authorship_and_saisie_…sql`        | created_by/updated_by + création par saisie  |
 
 ```bash
 npm run db:push
@@ -163,6 +164,30 @@ sur `supabase_migrations.schema_migrations` (la même table que la CLI Supabase)
   figurer en parallèle dans `electeurs` avec le même CIN : un encadrant est
   souvent lui-même électeur de la circonscription. La détection de doublons
   d'électeurs ne consulte donc pas la table `cadres`.
+- **`created_by` / `updated_by` sont posés par un trigger, jamais par le
+  client.** Un `DEFAULT` ne s'appliquerait que si la colonne est omise : un
+  appel PostgREST pourrait alors attribuer une écriture à un autre utilisateur.
+  Le trigger `set_row_authorship` écrase systématiquement la valeur reçue, et
+  rend `created_by` immuable en modification. Les lignes antérieures à la
+  migration restent à `NULL` — l'auteur n'est pas reconstituable, et inventer
+  une valeur serait mensonger.
+- **Un `saisie` peut créer et modifier un cadre, mais pas le supprimer.**
+  Un trigger `AFTER INSERT` l'affecte automatiquement au cadre qu'il vient de
+  créer, sans quoi la règle « il ne voit que les cadres de `user_cadres` » le
+  ferait disparaître à la seconde de son enregistrement.
+
+  ⚠️ Corollaire : **ne pas utiliser `.insert().select()` sur `cadres`** pour ce
+  rôle. PostgreSQL évalue le `RETURNING` — donc la policy `SELECT` — _avant_
+  les triggers `AFTER`, et l'appel échouerait en `42501` alors que la ligne
+  vient d'être créée. `createCadre` génère l'identifiant côté serveur et
+  n'utilise pas de `RETURNING`.
+
+- **Les noms d'auteur passent par la vue `user_display_names`**, pas par
+  `profiles`. La policy `profiles_select` n'autorise un « saisie » qu'à lire son
+  propre profil : le créateur d'un cadre saisi par un collègue resterait vide,
+  là précisément où la traçabilité sert. Cette vue contourne le RLS mais
+  n'expose que `id` et `full_name` — ni e-mail, ni rôle, ni statut. Elle est
+  résolue en **une seule requête** pour toute la liste, jamais ligne par ligne.
 - **Le rôle n'est jamais lu depuis `raw_user_meta_data`.** Ces métadonnées sont
   modifiables par l'utilisateur au signup ; tout nouveau compte démarre en
   `saisie`, seul un `super_admin` peut l'élever.
@@ -198,12 +223,15 @@ sur `supabase_migrations.schema_migrations` (la même table que la CLI Supabase)
 
 ### Périmètre par rôle
 
-|                    | `super_admin` | `saisie`                   | `parlementaire` |
-| ------------------ | ------------- | -------------------------- | --------------- |
-| cadres / électeurs | tout          | ses cadres (`user_cadres`) | lecture seule   |
-| profils            | tout          | le sien                    | lecture seule   |
-| paramètres         | écriture      | lecture                    | lecture         |
-| journal d'audit    | lecture       | —                          | —               |
+|                      | `super_admin` | `saisie`                   | `parlementaire` |
+| -------------------- | ------------- | -------------------------- | --------------- |
+| cadres : lecture     | tout          | ses cadres (`user_cadres`) | lecture seule   |
+| cadres : création    | oui           | oui (auto-affecté)         | non             |
+| cadres : suppression | oui           | **non**                    | non             |
+| électeurs            | tout          | ses cadres (`user_cadres`) | lecture seule   |
+| profils              | tout          | le sien                    | lecture seule   |
+| paramètres           | écriture      | lecture                    | lecture         |
+| journal d'audit      | lecture       | —                          | —               |
 
 ### Vérifier le RLS
 
@@ -211,9 +239,10 @@ sur `supabase_migrations.schema_migrations` (la même table que la CLI Supabase)
 npm run test:rls
 ```
 
-32 assertions sur de vraies sessions authentifiées (périmètre `saisie`,
+37 assertions sur de vraies sessions authentifiées (périmètre `saisie`,
 lecture seule du `parlementaire`, unicité CIN dans chaque table, cadre pouvant
 aussi être électeur, détection de doublon hors périmètre, رقم الترتيب sans trou,
+création de cadre par un « saisie », inviolabilité de `created_by`,
 journal append-only, compte désactivé, accès anonyme).
 Voir [`supabase/tests/rls.mjs`](supabase/tests/rls.mjs).
 

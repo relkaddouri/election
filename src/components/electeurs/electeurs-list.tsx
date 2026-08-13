@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import type { ElecteurWithOrder } from "@/types";
+import type { ElecteurWithAuthors } from "@/lib/data/electeurs";
 
 /**
  * Liste des électeurs : cartes empilées sur mobile, tableau sur desktop.
@@ -12,7 +12,7 @@ export function ElecteursList({
   electeurs,
   canEdit,
 }: {
-  electeurs: ElecteurWithOrder[];
+  electeurs: ElecteurWithAuthors[];
   canEdit: boolean;
 }) {
   if (electeurs.length === 0) {
@@ -88,6 +88,8 @@ export function ElecteursList({
               <th className="p-3 text-start font-semibold">مكتب التصويت</th>
               <th className="p-3 text-start font-semibold">مكان التصويت</th>
               <th className="p-3 text-start font-semibold">المؤطر</th>
+              <th className="p-3 text-start font-semibold">أضيف بواسطة</th>
+              <th className="p-3 text-start font-semibold">عدل بواسطة</th>
               {canEdit && (
                 <th className="p-3 text-start font-semibold">إجراء</th>
               )}
@@ -114,6 +116,12 @@ export function ElecteursList({
                   >
                     {electeur.cadre_full_name}
                   </Link>
+                </td>
+                <td className="p-3 text-slate-600">
+                  {electeur.createdByName ?? "—"}
+                </td>
+                <td className="p-3 text-slate-600">
+                  {electeur.updatedByName ?? "—"}
                 </td>
                 {canEdit && (
                   <td className="p-3">

@@ -261,6 +261,65 @@ try {
     sMove.error?.code === "42501" || sMove.data?.length === 0,
     sMove.error?.code ?? `${sMove.data?.length} ligne(s) modifiée(s)`,
   );
+  // --- Création de cadres par le rôle « saisie » ----------------------------
+  const nouveauCadreId = crypto.randomUUID();
+  const sCadreInsert = await s.from("cadres").insert({
+    id: nouveauCadreId,
+    cin: "SAISIECREE",
+    full_name: "مؤطر أنشأه الكاتب",
+    polling_station_number: "9",
+    polling_location: "مكان",
+    // Tentative de s'attribuer la création à quelqu'un d'autre.
+    created_by: ids.super_admin,
+  });
+  check(
+    "un « saisie » peut créer un cadre",
+    !sCadreInsert.error,
+    sCadreInsert.error?.code ?? "accepté",
+  );
+  created.push(nouveauCadreId);
+
+  const { data: cadreCree } = await s
+    .from("cadres")
+    .select("created_by, updated_by")
+    .eq("id", nouveauCadreId)
+    .maybeSingle();
+  check(
+    "le cadre créé lui devient visible (affectation automatique)",
+    cadreCree != null,
+    cadreCree ? "visible" : "INVISIBLE",
+  );
+  check(
+    "created_by porte le vrai auteur, la valeur envoyée est ignorée",
+    cadreCree?.created_by === ids.saisie,
+    cadreCree?.created_by === ids.super_admin
+      ? "FALSIFICATION ACCEPTÉE"
+      : "auteur réel",
+  );
+
+  const { data: cadreMaj } = await s
+    .from("cadres")
+    .update({ full_name: "مؤطر معدَّل", created_by: ids.super_admin })
+    .eq("id", nouveauCadreId)
+    .select("created_by")
+    .maybeSingle();
+  check(
+    "created_by reste figé lors d'une modification",
+    cadreMaj?.created_by === ids.saisie,
+    cadreMaj?.created_by === ids.super_admin ? "RÉÉCRIT" : "figé",
+  );
+
+  const sCadreDelete = await s
+    .from("cadres")
+    .delete()
+    .eq("id", nouveauCadreId)
+    .select("id");
+  check(
+    "un « saisie » ne peut PAS supprimer un cadre",
+    sCadreDelete.error != null || sCadreDelete.data?.length === 0,
+    sCadreDelete.error?.code ?? `${sCadreDelete.data?.length} ligne(s)`,
+  );
+
   const sProfiles = await s.from("profiles").select("id");
   check(
     "ne voit que son propre profil",

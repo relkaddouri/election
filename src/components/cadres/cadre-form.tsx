@@ -11,6 +11,24 @@ import { CIN_CHECK_DEBOUNCE_MS } from "@/lib/constants";
 import { normalizeCin } from "@/lib/utils";
 import type { Cadre } from "@/types";
 
+/**
+ * Champs réellement manipulés par le formulaire.
+ *
+ * Exiger la ligne complète obligerait l'appelant à fournir `created_by` et
+ * `updated_by`, que le formulaire ne touche pas — ils sont posés par la base.
+ * La page d'édition lit d'ailleurs la vue `cadres_with_counts`, qui ne les
+ * expose pas.
+ */
+type CadreFormValues = Pick<
+  Cadre,
+  | "id"
+  | "cin"
+  | "full_name"
+  | "phone"
+  | "polling_station_number"
+  | "polling_location"
+>;
+
 type CinStatus = "idle" | "checking" | "available" | "taken";
 
 export function CadreForm({
@@ -22,7 +40,7 @@ export function CadreForm({
     state: CadreFormState,
     formData: FormData,
   ) => Promise<CadreFormState>;
-  cadre?: Cadre;
+  cadre?: CadreFormValues;
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState<CadreFormState, FormData>(

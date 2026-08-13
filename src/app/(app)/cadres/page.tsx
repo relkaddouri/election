@@ -4,7 +4,7 @@ import { CadresList } from "@/components/cadres/cadres-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { SearchInput } from "@/components/ui/search-input";
 import { requireRole } from "@/lib/auth";
-import { listCadres } from "@/lib/data/cadres";
+import { listCadresWithAuthors } from "@/lib/data/cadres";
 
 export default async function CadresPage({
   searchParams,
@@ -13,11 +13,12 @@ export default async function CadresPage({
   const { q } = await searchParams;
   const search = typeof q === "string" ? q : undefined;
 
-  const cadres = await listCadres({ search });
+  const cadres = await listCadresWithAuthors({ search });
 
-  // Le RLS autorise l'insertion aux seuls super_admin : proposer le bouton aux
-  // autres rôles ne mènerait qu'à une erreur.
-  const canCreate = user.role === "super_admin";
+  // Aligné sur la policy `cadres_insert` : super_admin et saisie. Le
+  // parlementaire est en lecture seule, lui proposer le bouton ne mènerait
+  // qu'à un refus.
+  const canCreate = user.role === "super_admin" || user.role === "saisie";
 
   return (
     <>

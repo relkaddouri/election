@@ -1,5 +1,7 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -84,18 +86,25 @@ export async function createCadre(
     };
   }
 
+  // Identifiant décidé ici plutôt que réclamé en `RETURNING`.
+  //
+  // Un utilisateur « saisie » n'a le droit de lire un cadre que s'il figure
+  // dans `user_cadres` ; l'affectation est posée par un trigger AFTER INSERT.
+  // Or PostgreSQL évalue `RETURNING` — donc la policy SELECT — *avant* les
+  // triggers AFTER : un `.select()` ici échouerait en 42501 alors que la ligne
+  // vient d'être créée, et l'application signalerait une erreur pour une
+  // écriture réussie.
+  const id = randomUUID();
+
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("cadres")
-    .insert({
-      cin: values.cin,
-      full_name: values.full_name,
-      phone: values.phone || null,
-      polling_station_number: values.polling_station_number,
-      polling_location: values.polling_location,
-    })
-    .select("id")
-    .single();
+  const { error } = await supabase.from("cadres").insert({
+    id,
+    cin: values.cin,
+    full_name: values.full_name,
+    phone: values.phone || null,
+    polling_station_number: values.polling_station_number,
+    polling_location: values.polling_location,
+  });
 
   if (error) {
     return error.code === "23505"
@@ -103,9 +112,9 @@ export async function createCadre(
       : { error: arabicDbError(error.code), values };
   }
 
-  await logAudit("create", "cadre", data.id);
+  await logAudit("create", "cadre", id);
   revalidatePath("/cadres");
-  redirect(`/cadres/${data.id}`);
+  redirect(`/cadres/${id}`);
 }
 
 export async function updateCadre(

@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/auth";
 
 export default async function NouveauCadrePage() {
   // Aligné sur la policy RLS `cadres_insert`.
-  await requireRole(["super_admin"]);
+  await requireRole(["super_admin", "saisie"]);
 
   return (
     <div className="mx-auto max-w-3xl">

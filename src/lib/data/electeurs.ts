@@ -1,6 +1,10 @@
 import "server-only";
 
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants";
+import {
+  attachAuthorNamesToAll,
+  type WithAuthorNames,
+} from "@/lib/data/authors";
 import { createClient } from "@/lib/supabase/server";
 import type {
   DuplicateCadre,
@@ -24,6 +28,9 @@ export type ElecteurFilters = {
   pollingLocation?: string;
 };
 
+/** Électeur enrichi des noms de son créateur et de son dernier modificateur. */
+export type ElecteurWithAuthors = WithAuthorNames<ElecteurWithOrder>;
+
 export type ElecteurListParams = ElecteurFilters & {
   page?: number;
   pageSize?: number;
@@ -43,7 +50,7 @@ export async function listElecteurs({
   pollingLocation,
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
-}: ElecteurListParams): Promise<Paginated<ElecteurWithOrder>> {
+}: ElecteurListParams): Promise<Paginated<ElecteurWithAuthors>> {
   const supabase = await createClient();
 
   let query = supabase
@@ -76,7 +83,9 @@ export async function listElecteurs({
     throw new Error(`Lecture des électeurs impossible : ${error.message}`);
 
   return {
-    rows: data ?? [],
+    // Les noms d'auteur sont résolus pour la page affichée seulement, en une
+    // requête — jamais ligne par ligne.
+    rows: await attachAuthorNamesToAll(data ?? []),
     total: count ?? 0,
     page: safePage,
     pageSize,

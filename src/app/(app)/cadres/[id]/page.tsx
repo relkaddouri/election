@@ -5,11 +5,12 @@ import { DeleteCadreButton } from "@/components/cadres/delete-cadre-button";
 import { ElecteursMiniList } from "@/components/electeurs/electeurs-mini-list";
 import { PageHeader } from "@/components/layout/page-header";
 import { FilterSelect, ResetFiltersLink } from "@/components/ui/filter-select";
+import { MobileDisclosure } from "@/components/ui/mobile-disclosure";
 import { Pagination } from "@/components/ui/pagination";
 import { SearchInput } from "@/components/ui/search-input";
 import { requireRole } from "@/lib/auth";
 import { isReadOnly } from "@/lib/constants";
-import { getCadre } from "@/lib/data/cadres";
+import { getCadreWithAuthors } from "@/lib/data/cadres";
 import { getElecteurFilterOptions, listElecteurs } from "@/lib/data/electeurs";
 
 function InfoRow({
@@ -47,7 +48,7 @@ export default async function CadreDetailPage({
   // `getCadre` renvoie null aussi bien pour un id inexistant que pour un cadre
   // hors périmètre RLS : dans les deux cas, 404 — ne pas révéler l'existence
   // d'un cadre auquel l'utilisateur n'a pas accès.
-  const cadre = await getCadre(id);
+  const cadre = await getCadreWithAuthors(id);
   if (!cadre) notFound();
 
   // Même source paginée que la page « الناخبون » : le رقم الترتيب affiché est
@@ -92,6 +93,21 @@ export default async function CadreDetailPage({
           />
           <InfoRow label="مكان التصويت" value={cadre.polling_location} />
         </dl>
+
+        {/* Traçabilité — repliée sur mobile pour ne pas repousser la liste
+            des électeurs hors de l'écran, toujours visible à partir de `sm`. */}
+        <div className="mt-4 border-t border-line pt-4">
+          <MobileDisclosure label="معلومات التتبع">
+            <InfoRow
+              label="أضيف بواسطة"
+              value={cadre.createdByName ?? "غير معروف"}
+            />
+            <InfoRow
+              label="عدل بواسطة"
+              value={cadre.updatedByName ?? "غير معروف"}
+            />
+          </MobileDisclosure>
+        </div>
 
         <div className="mt-6 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row">
           {/* Lien natif et non `Link` : la réponse est un fichier, pas une
