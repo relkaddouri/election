@@ -93,8 +93,19 @@ export default async function CadreDetailPage({
           <InfoRow label="مكان التصويت" value={cadre.polling_location} />
         </dl>
 
+        <div className="mt-6 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row">
+          {/* Lien natif et non `Link` : la réponse est un fichier, pas une
+              route de l'application — une navigation client la casserait. */}
+          <a
+            href={`/api/cadres/${cadre.id}/pdf`}
+            className="inline-flex min-h-touch items-center justify-center rounded-lg border border-line px-4 font-medium hover:bg-surface-muted"
+          >
+            تحميل PDF
+          </a>
+        </div>
+
         {canEdit && (
-          <div className="mt-6 flex flex-col gap-3 border-t border-line pt-4 sm:flex-row">
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
             <Link
               href={`/cadres/${cadre.id}/modifier`}
               className="inline-flex min-h-touch items-center justify-center rounded-lg bg-brand-600 px-4 font-medium text-white hover:bg-brand-700"

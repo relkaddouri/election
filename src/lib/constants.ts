@@ -55,6 +55,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
     roles: ["super_admin", "parlementaire"],
   },
   { label: "الإعدادات", href: "/parametres", roles: ["super_admin"] },
+  // Absent de la liste du cahier des charges (section 3) : le journal y est
+  // demandé sans emplacement précis. Une entrée dédiée vaut mieux que de
+  // l'enterrer dans les réglages.
+  { label: "سجل العمليات", href: "/journal", roles: ["super_admin"] },
 ];
 
 export function navItemsForRole(role: UserRole): NavItem[] {
@@ -90,3 +94,25 @@ export const CIN_CHECK_DEBOUNCE_MS = 400;
  * peut exporter que des fonctions asynchrones.
  */
 export const ELECTEUR_DUPLICATE_MESSAGE = "هذا الناخب مسجل مسبقاً في النظام";
+
+/**
+ * Libellés du journal d'audit.
+ *
+ * Indexés par chaîne et non par union de types : `audit_logs.action` est une
+ * colonne texte libre, et une valeur écrite par une version antérieure du code
+ * doit rester affichable plutôt que de faire planter la page.
+ */
+export const AUDIT_ACTION_LABELS: Record<string, string> = {
+  create: "إضافة",
+  update: "تعديل",
+  delete: "حذف",
+  login: "تسجيل دخول",
+  export: "تصدير",
+};
+
+export const AUDIT_ENTITY_LABELS: Record<string, string> = {
+  cadre: "مؤطر",
+  electeur: "ناخب",
+  user: "مستخدم",
+  settings: "إعدادات",
+};

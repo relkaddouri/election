@@ -12,6 +12,18 @@ function isPublic(pathname: string): boolean {
 }
 
 /**
+ * Les routes d'API ne doivent jamais être redirigées vers la page de connexion.
+ *
+ * Un client qui appelle `/api/...` sans session recevrait alors le HTML de
+ * `/login` en 200 — trompeur pour l'appelant, et impossible à distinguer d'un
+ * succès. Elles sont laissées passer pour que leur handler réponde lui-même un
+ * 401 JSON ; chacune vérifie la session de son côté.
+ */
+function isApiRoute(pathname: string): boolean {
+  return pathname === "/api" || pathname.startsWith("/api/");
+}
+
+/**
  * Rafraîchit le jeton de session Supabase, puis arbitre l'accès :
  * visiteur anonyme → page de connexion, utilisateur connecté sur /login →
  * son écran d'accueil.
@@ -78,7 +90,7 @@ export async function updateSession(request: NextRequest) {
     return redirect;
   };
 
-  if (!user && !isPublic(pathname)) {
+  if (!user && !isPublic(pathname) && !isApiRoute(pathname)) {
     const search = new URLSearchParams();
     // Mémorise la destination pour y revenir après connexion.
     if (pathname !== "/") search.set("next", pathname);

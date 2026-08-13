@@ -1,17 +1,39 @@
-import { PageHeader, PlaceholderCard } from "@/components/layout/page-header";
+import { PageHeader } from "@/components/layout/page-header";
+import { CreateUserForm } from "@/components/users/create-user-form";
+import { UserCard } from "@/components/users/user-card";
 import { requireRole } from "@/lib/auth";
+import { listCadres } from "@/lib/data/cadres";
+import { listUsers } from "@/lib/data/users";
 
 export default async function UtilisateursPage() {
   // Réservé au super_admin : un « saisie » ne doit pas atteindre cette page.
-  await requireRole(["super_admin"]);
+  const current = await requireRole(["super_admin"]);
+
+  const [users, cadres] = await Promise.all([listUsers(), listCadres({})]);
 
   return (
     <>
       <PageHeader
         title="المستخدمون"
-        description="إنشاء المستخدمين وتحديد أدوارهم وربطهم بالمؤطرين"
+        description="إنشاء الحسابات وتحديد الأدوار وإسناد المؤطرين"
       />
-      <PlaceholderCard step="تدبير المستخدمين — المرحلة 9 من دفتر التحملات" />
+
+      <CreateUserForm cadres={cadres} />
+
+      <p className="mb-3 text-sm text-slate-600">
+        عدد المستخدمين : <span className="ltr-field">{users.length}</span>
+      </p>
+
+      <ul className="flex flex-col gap-3">
+        {users.map((user) => (
+          <UserCard
+            key={user.id}
+            user={user}
+            cadres={cadres}
+            isSelf={user.id === current.id}
+          />
+        ))}
+      </ul>
     </>
   );
 }

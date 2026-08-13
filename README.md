@@ -40,12 +40,18 @@ src/
     (app)/              Pages authentifiées — layout avec navigation
       page.tsx          Tableau de bord
       cadres/ electeurs/ utilisateurs/ rapports/ parametres/
+      journal/          Journal d'audit « سجل العمليات »
       acces-refuse/     Refus explicite quand le rôle est insuffisant
   components/
-    ui/                 Primitives (Button, Input…)
+    ui/                 Primitives (Button, Input, Pagination…)
     layout/             Coquille, navigation, tiroir mobile
+    cadres/ electeurs/  Formulaires et listes métier
+    dashboard/          Tuiles de statistiques et graphique
+    settings/ users/    Paramètres et gestion des comptes
   lib/
-    actions/auth.ts     Server Actions : connexion, déconnexion
+    actions/            Server Actions (auth, cadres, électeurs)
+    data/               Requêtes serveur (cadres, électeurs, statistiques)
+    reports/            Exports PDF (Puppeteer) et Excel (ExcelJS)
     supabase/
       client.ts         Client navigateur (RLS)
       server.ts         Client serveur (RLS) + client admin (clé secrète)
@@ -118,6 +124,8 @@ le projet Supabase.
 | `…_cadres_view_and_cin_check.sql`     | Vue de comptage + vérification CIN           |
 | `…_electeurs_view_and_cin_lookup.sql` | رقم الترتيب + détection de doublon           |
 | `…_electeurs_insertion_sequence.sql`  | Ordre d'insertion déterministe               |
+| `…_electeurs_required_fields.sql`     | Téléphone, bureau et lieu obligatoires       |
+| `…_electeurs_filter_options.sql`      | Valeurs distinctes pour les filtres          |
 
 ```bash
 npm run db:push
@@ -264,9 +272,105 @@ node --env-file=.env.local supabase/tests/seed-temp-users.mjs create
 node --env-file=.env.local supabase/tests/seed-temp-users.mjs drop
 ```
 
+## Tableau de bord
+
+Réservé au `super_admin` et au `parlementaire` ; un `saisie` est renvoyé vers
+« الناخبون ». Les totaux sont comptés par PostgreSQL (`head: true` — aucune
+ligne transférée) et restent soumis au RLS.
+
+Le graphique de répartition est **une seule série de magnitudes**, donc une
+teinte unique et pas de légende : une palette catégorielle laisserait croire
+que la couleur porte une information alors que seule la longueur compte. Les
+barres sont mises à l'échelle du plus grand cadre, non du total — sinon une
+répartition équilibrée entre dix cadres donnerait dix barres écrasées. Le
+tableau qui suit porte les valeurs exactes et sert de recours d'accessibilité.
+
+## Exports
+
+| Route                  | Accès                     | Contenu                         |
+| ---------------------- | ------------------------- | ------------------------------- |
+| `/api/cadres/[id]/pdf` | tout rôle voyant le cadre | PDF A4 du cadre + ses électeurs |
+| `/api/export/excel`    | `super_admin` uniquement  | `.xlsx`, une feuille par cadre  |
+
+Ajouter `?apercu=1` au PDF l'affiche dans le navigateur au lieu de le
+télécharger.
+
+### Pourquoi Chromium et pas une bibliothèque PDF
+
+L'arabe exige deux traitements que les bibliothèques PDF courantes ne font pas :
+le **façonnage contextuel** (une lettre a jusqu'à quatre formes selon sa place
+dans le mot) et la **réorganisation bidirectionnelle** du texte. `pdf-lib` et
+consorts écrivent les glyphes en forme isolée et dans l'ordre logique — le
+résultat est illisible. Chromium fait les deux nativement, donc le PDF est
+imprimé depuis un document HTML.
+
+Conséquences à connaître :
+
+- **La police Cairo est embarquée en base64** dans le HTML
+  (`src/lib/reports/fonts/Cairo.ttf`, licence OFL incluse). Un serveur Linux n'a
+  en général aucune police arabe : sans elle, le PDF sortirait en carrés vides.
+- **Le multi-pages repose sur `display: table-header-group`** pour répéter
+  l'en-tête du tableau, et `break-inside: avoid` pour ne pas couper une ligne.
+- **Chromium est mis en cache entre les requêtes** ; un lancement par export
+  coûterait ~300 ms et beaucoup de mémoire.
+- **En déploiement serverless** (Vercel, Lambda), le Chromium de Puppeteer n'est
+  pas disponible : il faut basculer sur `puppeteer-core` +
+  `@sparticuz/chromium`. Sur un serveur Node classique ou un conteneur, rien à
+  changer.
+
+Les feuilles Excel sont ouvertes en `rightToLeft` : sans cela, Excel afficherait
+les colonnes de gauche à droite et « رقم الترتيب » se retrouverait à l'opposé du
+sens de lecture.
+
+## Administration
+
+Trois pages réservées au `super_admin`, alignées sur les policies RLS
+correspondantes.
+
+### الإعدادات
+
+Nom du parti, جماعة ترابية et logo, repris dans les en-têtes PDF et Excel.
+
+Le logo n'accepte que **PNG et JPEG** : ce sont les seuls formats qu'ExcelJS sait
+insérer dans une feuille. Accepter WebP ou SVG donnerait un logo correct à
+l'écran mais cassé dans l'export — une incohérence invisible jusqu'au jour du
+scrutin.
+
+Chaque envoi crée un fichier horodaté (`logo-<timestamp>.png`) plutôt que
+d'écraser un nom fixe, qui resterait servi depuis le cache du CDN. Le logo
+remplacé est supprimé, mais **uniquement s'il correspond à ce motif** : un
+fichier déposé à la main dans le bucket n'est jamais touché.
+
+### المستخدمون
+
+Création de comptes, attribution du rôle, et affectation aux cadres
+(`user_cadres`) — proposée au seul rôle `saisie`, le seul dont le périmètre RLS
+en dépend.
+
+La création passe par la clé secrète, qui contourne le RLS : **chaque action
+revérifie elle-même que l'appelant est `super_admin`**. Deux verrous protègent
+contre la perte d'accès :
+
+1. On ne peut ni changer son propre rôle, ni désactiver son propre compte.
+2. Le dernier `super_admin` actif ne peut pas être dégradé.
+
+Les champs verrouillés de l'interface ne sont qu'un confort : le serveur rejette
+la modification même si l'on force les valeurs dans le DOM.
+
+Aucun e-mail n'est envoyé — le mot de passe initial est fixé par l'administrateur
+et doit être transmis par un canal sûr.
+
+### سجل العمليات
+
+Journal append-only : création, modification, suppression et export, avec
+l'auteur et la date. Filtrable par type d'opération et par élément, paginé.
+Ni l'application ni un `super_admin` ne peuvent en effacer une ligne.
+
+L'entrée reste lisible si le compte auteur est supprimé — la trace survit à
+l'utilisateur.
+
 ## Étape suivante
 
-Prompt 6 du cahier des charges : filtres combinés sur « الناخبون » (cadre,
-bureau, lieu), tiroir de filtres sur mobile, et pagination — la liste actuelle
-charge tous les résultats, ce qui ne tiendra pas à plusieurs milliers
-d'électeurs.
+Prompt 10 du cahier des charges : préparer l'architecture d'import Excel en masse
+(analyse du fichier avant import, détection des CIN déjà en base, résumé des
+doublons avant confirmation).

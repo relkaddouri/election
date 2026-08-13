@@ -20,3 +20,16 @@ export function toWesternDigits(value: string): string {
 export function normalizeCin(value: string): string {
   return toWesternDigits(value).replace(/\s+/g, "").toUpperCase();
 }
+
+/**
+ * Met en forme un nombre pour l'affichage.
+ *
+ * `-u-nu-latn` force les chiffres latins : le reste de l'application les
+ * utilise partout (CIN, téléphones, bureaux de vote), et le comportement par
+ * défaut d'une locale arabe dépend de la version d'ICU.
+ */
+const numberFormatter = new Intl.NumberFormat("ar-MA-u-nu-latn");
+
+export function formatNumber(value: number): string {
+  return numberFormatter.format(value);
+}
