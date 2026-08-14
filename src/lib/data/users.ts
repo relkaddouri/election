@@ -1,19 +1,21 @@
 import "server-only";
 
 import { createAdminClient, createClient } from "@/lib/supabase/server";
+import { emailToUsername } from "@/lib/username";
 import type { Profile, UserRole } from "@/types";
 
 export type ManagedUser = Profile & {
-  email: string | null;
+  /** Identifiant de connexion. L'e-mail technique n'est jamais exposé. */
+  username: string;
   cadres: { id: string; full_name: string }[];
 };
 
 /**
  * Utilisateurs de l'application, avec leurs cadres affectés.
  *
- * L'adresse e-mail vit dans `auth.users`, hors de portée du RLS et de
- * PostgREST : elle est récupérée via l'API d'administration. Le reste passe par
- * le client normal, donc par le RLS.
+ * L'identifiant de connexion vit dans `auth.users.email`, hors de portée du RLS
+ * et de PostgREST : il est récupéré via l'API d'administration, puis réduit à
+ * sa partie locale. Le reste passe par le client normal, donc par le RLS.
  */
 export async function listUsers(): Promise<ManagedUser[]> {
   const supabase = await createClient();
@@ -42,7 +44,7 @@ export async function listUsers(): Promise<ManagedUser[]> {
     const { user_cadres, ...rest } = profile;
     return {
       ...rest,
-      email: emails.get(profile.id) ?? null,
+      username: emailToUsername(emails.get(profile.id) ?? null),
       cadres: (user_cadres ?? [])
         .map((link) => link.cadres)
         .filter((cadre): cadre is { id: string; full_name: string } =>

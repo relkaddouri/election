@@ -15,26 +15,25 @@ export function LoginForm() {
   // Champ contrôlé : React réinitialise les champs non contrôlés d'un
   // formulaire après l'exécution d'une action. Sans cela, une erreur de mot de
   // passe obligerait à ressaisir aussi l'adresse e-mail.
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
 
   const errorId = state?.error ? "login-error" : undefined;
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="font-medium">
-          البريد الإلكتروني
+        <label htmlFor="identifier" className="font-medium">
+          اسم المستخدم
         </label>
-        {/* `dir="ltr"` : une adresse e-mail est du texte latin, elle doit se
-            saisir et s'aligner de gauche à droite même sur une page RTL. */}
+        {/* `dir="ltr"` : l'identifiant est du texte latin, il doit se saisir et
+            s'aligner de gauche à droite même sur une page RTL. */}
         <Input
-          id="email"
-          name="email"
-          type="email"
+          id="identifier"
+          name="identifier"
           dir="ltr"
           autoComplete="username"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          value={identifier}
+          onChange={(event) => setIdentifier(event.target.value)}
           /* Pas d'attribut `required` : le navigateur afficherait sa bulle de
              validation dans SA langue, en anglais au milieu d'une interface
              arabe. La vérification est faite côté serveur, qui répond en

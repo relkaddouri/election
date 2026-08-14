@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { homeRouteForRole } from "@/lib/constants";
+import { loginIdentifierToEmail } from "@/lib/username";
 import { createClient } from "@/lib/supabase/server";
 
 export type SignInState = { error: string } | null;
@@ -17,7 +18,7 @@ export type SignInState = { error: string } | null;
 function arabicAuthError(code: string | undefined): string {
   switch (code) {
     case "invalid_credentials":
-      return "البريد الإلكتروني أو كلمة المرور غير صحيحة";
+      return "اسم المستخدم أو كلمة المرور غير صحيحة";
     case "email_not_confirmed":
       return "لم يتم تأكيد البريد الإلكتروني بعد";
     case "over_request_rate_limit":
@@ -34,16 +35,20 @@ export async function signIn(
   _prevState: SignInState,
   formData: FormData,
 ): Promise<SignInState> {
-  const email = String(formData.get("email") ?? "").trim();
+  const identifier = String(formData.get("identifier") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
-  if (!email || !password) {
-    return { error: "يرجى إدخال البريد الإلكتروني وكلمة المرور" };
+  if (!identifier || !password) {
+    return { error: "يرجى إدخال اسم المستخدم وكلمة المرور" };
   }
 
+  // Les comptes sont désignés par un nom d'utilisateur ; l'adresse e-mail
+  // n'est qu'un artefact interne exigé par Supabase Auth. Une saisie contenant
+  // « @ » reste acceptée telle quelle, pour les comptes antérieurs à ce
+  // mécanisme.
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({
-    email,
+    email: loginIdentifierToEmail(identifier),
     password,
   });
 

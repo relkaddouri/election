@@ -1,5 +1,5 @@
 import { PageHeader } from "@/components/layout/page-header";
-import { CreateUserForm } from "@/components/users/create-user-form";
+import { CreateUserPanel } from "@/components/users/create-user-panel";
 import { UserCard } from "@/components/users/user-card";
 import { requireRole } from "@/lib/auth";
 import { listCadres } from "@/lib/data/cadres";
@@ -18,7 +18,7 @@ export default async function UtilisateursPage() {
         description="إنشاء الحسابات وتحديد الأدوار وإسناد المؤطرين"
       />
 
-      <CreateUserForm cadres={cadres} />
+      <CreateUserPanel cadres={cadres} />
 
       <p className="mb-3 text-sm text-slate-600">
         عدد المستخدمين : <span className="ltr-field">{users.length}</span>

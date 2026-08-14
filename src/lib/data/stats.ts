@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
+import type { UserRole } from "@/types";
 
 export type CadreShare = {
   id: string;
@@ -13,10 +14,23 @@ export type CadreShare = {
 export type DashboardStats = {
   totalElecteurs: number;
   totalCadres: number;
-  totalUtilisateurs: number;
+  /** `null` quand le rôle n'a pas à connaître ce chiffre — il n'est alors
+   *  pas non plus demandé à la base. */
+  totalUtilisateurs: number | null;
   /** Cadres triés par nombre d'électeurs décroissant. */
   distribution: CadreShare[];
 };
+
+/**
+ * Le nombre d'utilisateurs n'est destiné qu'au super_admin.
+ *
+ * Exporté pour que la page et la couche données s'appuient sur la même règle :
+ * masquer la carte sans écarter la requête laisserait une donnée non désirée
+ * transiter à chaque affichage.
+ */
+export function canSeeUserCount(role: UserRole): boolean {
+  return role === "super_admin";
+}
 
 /**
  * Statistiques du tableau de bord.
@@ -26,16 +40,24 @@ export type DashboardStats = {
  * imposerait de rapatrier des milliers d'électeurs pour n'en afficher que la
  * longueur.
  *
- * Toutes les requêtes restent soumises au RLS : les chiffres sont ceux du
- * périmètre de l'utilisateur, pas des totaux privilégiés.
+ * Toutes les requêtes restent soumises au RLS : un utilisateur « saisie » voit
+ * les chiffres de son périmètre, pas des totaux privilégiés.
  */
-export async function getDashboardStats(): Promise<DashboardStats> {
+export async function getDashboardStats(
+  role: UserRole,
+): Promise<DashboardStats> {
   const supabase = await createClient();
+
+  const includeUserCount = canSeeUserCount(role);
 
   const [electeurs, cadres, utilisateurs, parCadre] = await Promise.all([
     supabase.from("electeurs").select("*", { count: "exact", head: true }),
     supabase.from("cadres").select("*", { count: "exact", head: true }),
-    supabase.from("profiles").select("*", { count: "exact", head: true }),
+    // La requête n'est pas seulement ignorée à l'affichage : elle n'est pas
+    // émise du tout pour les rôles qui n'y ont pas droit.
+    includeUserCount
+      ? supabase.from("profiles").select("*", { count: "exact", head: true })
+      : Promise.resolve(null),
     supabase
       .from("cadres_with_counts")
       .select("id, full_name, electeurs_count")
@@ -58,7 +80,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   return {
     totalElecteurs,
     totalCadres: cadres.count ?? 0,
-    totalUtilisateurs: utilisateurs.count ?? 0,
+    totalUtilisateurs: utilisateurs ? (utilisateurs.count ?? 0) : null,
     distribution,
   };
 }

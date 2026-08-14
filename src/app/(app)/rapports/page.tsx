@@ -6,7 +6,11 @@ import { listCadres } from "@/lib/data/cadres";
 import { formatNumber } from "@/lib/utils";
 
 export default async function RapportsPage() {
-  const user = await requireRole(["super_admin", "parlementaire"]);
+  // Ouverte aux trois rôles : le contenu, lui, reste filtré.
+  // — le bloc Excel est réservé au super_admin (section 23 du brief) ;
+  // — la liste des cadres passe par le RLS, donc un « saisie » n'y voit que
+  //   les siens, et l'endpoint PDF répond 404 pour les autres.
+  const user = await requireRole(["super_admin", "saisie", "parlementaire"]);
   const cadres = await listCadres({});
 
   return (

@@ -1,10 +1,16 @@
 import type { UserRole } from "@/types/database";
 
-/** Libellés arabes des rôles (cf. sections 17-19 du cahier des charges). */
+/**
+ * Libellés arabes des rôles (cf. sections 17-19 du cahier des charges).
+ *
+ * Seuls ces libellés changent avec l'usage : la clé `parlementaire` reste la
+ * valeur stockée en base et employée par les policies RLS. Renommer l'une sans
+ * l'autre est délibéré — l'affichage évolue, le schéma ne bouge pas.
+ */
 export const ROLE_LABELS: Record<UserRole, string> = {
   super_admin: "مدير عام",
   saisie: "مستخدم الإدخال",
-  parlementaire: "برلماني",
+  parlementaire: "مسير",
 };
 
 export const ROLE_BADGES: Record<UserRole, string> = {
@@ -40,20 +46,16 @@ const ALL_ROLES: readonly UserRole[] = [
  * `roles` sert à la fois à filtrer l'affichage et à autoriser la route :
  * les deux ne peuvent donc pas diverger.
  *
- * Le tableau de bord est réservé au super_admin et au parlementaire (le brief
- * ne prévoit de statistiques que pour eux) ; un utilisateur « saisie » démarre
- * directement sur la liste des électeurs.
+ * Le tableau de bord est ouvert aux trois rôles. Les chiffres d'un « saisie »
+ * sont ceux de son périmètre, le RLS s'en chargeant ; seule la carte du nombre
+ * d'utilisateurs lui est retirée — et n'est alors même pas demandée à la base.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { label: "الرئيسية", href: "/", roles: ["super_admin", "parlementaire"] },
+  { label: "الرئيسية", href: "/", roles: ALL_ROLES },
   { label: "المؤطرون", href: "/cadres", roles: ALL_ROLES },
   { label: "الناخبون", href: "/electeurs", roles: ALL_ROLES },
   { label: "المستخدمون", href: "/utilisateurs", roles: ["super_admin"] },
-  {
-    label: "التقارير",
-    href: "/rapports",
-    roles: ["super_admin", "parlementaire"],
-  },
+  { label: "التقارير", href: "/rapports", roles: ALL_ROLES },
   { label: "الإعدادات", href: "/parametres", roles: ["super_admin"] },
   // Absent de la liste du cahier des charges (section 3) : le journal y est
   // demandé sans emplacement précis. Une entrée dédiée vaut mieux que de
@@ -69,10 +71,11 @@ export function navItemsForRole(role: UserRole): NavItem[] {
  * Page d'atterrissage après connexion.
  *
  * Doit toujours pointer vers une route que le rôle peut réellement ouvrir,
- * sinon `requireRole` renverrait l'utilisateur en boucle.
+ * sinon `requireRole` renverrait l'utilisateur en boucle. Le tableau de bord
+ * étant désormais accessible aux trois rôles, il sert d'accueil à tous.
  */
-export function homeRouteForRole(role: UserRole): string {
-  return role === "saisie" ? "/electeurs" : "/";
+export function homeRouteForRole(_role: UserRole): string {
+  return "/";
 }
 
 /** Route vers laquelle renvoyer un utilisateur dont le rôle est insuffisant. */
@@ -94,6 +97,14 @@ export const CIN_CHECK_DEBOUNCE_MS = 400;
  * peut exporter que des fonctions asynchrones.
  */
 export const ELECTEUR_DUPLICATE_MESSAGE = "هذا الناخب مسجل مسبقاً في النظام";
+
+/**
+ * Longueur minimale d'un mot de passe.
+ *
+ * Défini ici et non dans `actions/users.ts` : un module `"use server"` ne peut
+ * exporter que des fonctions asynchrones.
+ */
+export const MIN_PASSWORD_LENGTH = 8;
 
 /**
  * Libellés du journal d'audit.

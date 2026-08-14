@@ -1,18 +1,15 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { CadreCheckboxes } from "@/components/users/cadre-checkboxes";
-import { updateUser, type UserFormState } from "@/lib/actions/users";
+import { UserForm } from "@/components/users/user-form";
+import { updateUser } from "@/lib/actions/users";
 import { ROLE_BADGES, ROLE_LABELS } from "@/lib/constants";
-import type { CadreWithCount, UserRole } from "@/types";
 import type { ManagedUser } from "@/lib/data/users";
+import type { CadreWithCount } from "@/types";
 
-const ROLES: UserRole[] = ["saisie", "parlementaire", "super_admin"];
-
+/** Ligne de liste : nom, identifiant, rôle — puis le même formulaire en édition. */
 export function UserCard({
   user,
   cadres,
@@ -20,20 +17,9 @@ export function UserCard({
 }: {
   user: ManagedUser;
   cadres: CadreWithCount[];
-  /** Empêche l'utilisateur de se retirer ses propres droits. */
   isSelf: boolean;
 }) {
   const [editing, setEditing] = useState(false);
-  const [state, formAction, pending] = useActionState<UserFormState, FormData>(
-    updateUser.bind(null, user.id),
-    null,
-  );
-  const [role, setRole] = useState<UserRole>(user.role);
-  // Contrôlé pour la même raison : un échec de validation ramènerait sinon le
-  // champ à sa valeur d'origine, effaçant la correction en cours.
-  const [fullName, setFullName] = useState(user.full_name);
-
-  const assignedIds = user.cadres.map((cadre) => cadre.id);
 
   return (
     <li className="rounded-xl border border-line bg-surface p-4">
@@ -53,7 +39,7 @@ export function UserCard({
             )}
           </div>
           <p className="mt-0.5 truncate ltr-field text-sm text-slate-500">
-            {user.email ?? "—"}
+            {user.username}
           </p>
           <p className="mt-1 text-sm">
             <span aria-hidden="true">{ROLE_BADGES[user.role]}</span>{" "}
@@ -77,103 +63,15 @@ export function UserCard({
         </Button>
       </div>
 
-      {state?.success && !editing && (
-        <p
-          role="status"
-          className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800"
-        >
-          {state.success}
-        </p>
-      )}
-
       {editing && (
-        <form
-          action={formAction}
-          className="mt-4 flex flex-col gap-4 border-t border-line pt-4"
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field id={`name-${user.id}`} label="الاسم الكامل" required>
-              <Input
-                id={`name-${user.id}`}
-                name="full_name"
-                value={fullName}
-                onChange={(event) => setFullName(event.target.value)}
-                aria-required="true"
-              />
-            </Field>
-
-            <Field id={`role-${user.id}`} label="الدور" required>
-              <select
-                id={`role-${user.id}`}
-                name="role"
-                value={role}
-                onChange={(event) => setRole(event.target.value as UserRole)}
-                disabled={isSelf}
-                className="min-h-touch w-full rounded-lg border border-line bg-surface px-3 text-base disabled:opacity-60"
-              >
-                {ROLES.map((value) => (
-                  <option key={value} value={value}>
-                    {ROLE_LABELS[value]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-
-          <label className="flex min-h-touch items-center gap-2">
-            <input
-              type="checkbox"
-              name="is_active"
-              defaultChecked={user.is_active}
-              disabled={isSelf}
-              className="size-4"
-            />
-            <span>الحساب مفعّل</span>
-          </label>
-
-          {isSelf && (
-            <>
-              {/* Un contrôle `disabled` n'est pas transmis par le navigateur :
-                  sans ces champs cachés, le formulaire partirait sans rôle et
-                  l'utilisateur ne pourrait même pas se renommer. Le serveur
-                  revérifie de toute façon qu'on ne modifie pas ses propres
-                  droits. */}
-              <input type="hidden" name="role" value={user.role} />
-              {user.is_active && (
-                <input type="hidden" name="is_active" value="on" />
-              )}
-              <p className="rounded-lg bg-surface-muted px-3 py-2 text-sm text-slate-600">
-                لا يمكنك تغيير دورك أو تعطيل حسابك بنفسك. اطلب ذلك من مدير عام
-                آخر.
-              </p>
-            </>
-          )}
-
-          <CadreCheckboxes
+        <div className="mt-4 border-t border-line pt-4">
+          <UserForm
+            action={updateUser.bind(null, user.id)}
+            user={user}
             cadres={cadres}
-            selected={assignedIds}
-            visible={role === "saisie"}
+            isSelf={isSelf}
           />
-
-          {state?.error && (
-            <p
-              role="alert"
-              className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
-            >
-              {state.error}
-            </p>
-          )}
-
-          <div>
-            <Button
-              type="submit"
-              disabled={pending}
-              className="w-full sm:w-auto"
-            >
-              {pending ? "جارٍ الحفظ…" : "حفظ"}
-            </Button>
-          </div>
-        </form>
+        </div>
       )}
     </li>
   );

@@ -303,9 +303,16 @@ node --env-file=.env.local supabase/tests/seed-temp-users.mjs drop
 
 ## Tableau de bord
 
-Réservé au `super_admin` et au `parlementaire` ; un `saisie` est renvoyé vers
-« الناخبون ». Les totaux sont comptés par PostgreSQL (`head: true` — aucune
-ligne transférée) et restent soumis au RLS.
+Ouvert aux trois rôles. Les totaux sont comptés par PostgreSQL (`head: true` —
+aucune ligne transférée) et restent soumis au RLS : un `saisie` voit les
+chiffres de son périmètre, pas des totaux privilégiés, et un bandeau le lui
+rappelle.
+
+**La carte « مجموع المستخدمين » n'est pas seulement masquée hors `super_admin` :
+la requête n'est pas émise.** `getDashboardStats` reçoit le rôle et remplace
+l'appel par `Promise.resolve(null)` ; `totalUtilisateurs` vaut alors `null`, ce
+qui distingue « non demandé » de « zéro ». Masquer sans écarter la requête
+laisserait la donnée transiter à chaque affichage.
 
 Le graphique de répartition est **une seule série de magnitudes**, donc une
 teinte unique et pas de légende : une palette catégorielle laisserait croire

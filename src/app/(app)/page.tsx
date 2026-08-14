@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-
 import {
   CadreDistribution,
   CadreDistributionTable,
@@ -7,17 +5,14 @@ import {
 import { StatCard } from "@/components/dashboard/stat-card";
 import { PageHeader } from "@/components/layout/page-header";
 import { requireUser } from "@/lib/auth";
-import { homeRouteForRole, isReadOnly, ROLE_LABELS } from "@/lib/constants";
-import { getDashboardStats } from "@/lib/data/stats";
+import { isReadOnly, ROLE_LABELS } from "@/lib/constants";
+import { canSeeUserCount, getDashboardStats } from "@/lib/data/stats";
 
 export default async function DashboardPage() {
   const user = await requireUser();
+  const stats = await getDashboardStats(user.role);
 
-  // Un « saisie » n'a pas de tableau de bord : on le renvoie vers son écran
-  // d'accueil plutôt que de lui opposer un refus d'accès.
-  if (user.role === "saisie") redirect(homeRouteForRole(user.role));
-
-  const stats = await getDashboardStats();
+  const showUserCount = canSeeUserCount(user.role);
 
   return (
     <>
@@ -32,11 +27,32 @@ export default async function DashboardPage() {
         </p>
       )}
 
-      {/* Empilées sur mobile, en grille dès `sm`. */}
-      <section aria-label="أرقام عامة" className="grid gap-4 sm:grid-cols-3">
+      {user.role === "saisie" && (
+        <p className="mb-5 rounded-lg bg-surface-muted px-3 py-2 text-sm text-slate-600">
+          الأرقام المعروضة تخص المؤطرين المسندين إليك فقط.
+        </p>
+      )}
+
+      {/*
+        Empilées sur mobile, en grille dès `sm`. Le nombre de colonnes suit le
+        nombre de cartes : à deux cartes, une grille de trois laisserait un
+        vide à la fin de la ligne.
+      */}
+      <section
+        aria-label="أرقام عامة"
+        className={
+          showUserCount
+            ? "grid gap-4 sm:grid-cols-3"
+            : "grid gap-4 sm:grid-cols-2"
+        }
+      >
         <StatCard label="مجموع الناخبين" value={stats.totalElecteurs} />
         <StatCard label="مجموع المؤطرين" value={stats.totalCadres} />
-        <StatCard label="مجموع المستخدمين" value={stats.totalUtilisateurs} />
+        {/* `totalUtilisateurs` vaut `null` hors super_admin : la donnée n'a même
+            pas été demandée à la base. */}
+        {showUserCount && stats.totalUtilisateurs !== null && (
+          <StatCard label="مجموع المستخدمين" value={stats.totalUtilisateurs} />
+        )}
       </section>
 
       <section aria-label="التوزيع حسب المؤطر" className="mt-6 grid gap-6">
