@@ -7,11 +7,10 @@ import type { Profile, UserRole } from "@/types";
 export type ManagedUser = Profile & {
   /** Identifiant de connexion. L'e-mail technique n'est jamais exposé. */
   username: string;
-  cadres: { id: string; full_name: string }[];
 };
 
 /**
- * Utilisateurs de l'application, avec leurs cadres affectés.
+ * Utilisateurs de l'application.
  *
  * L'identifiant de connexion vit dans `auth.users.email`, hors de portée du RLS
  * et de PostgREST : il est récupéré via l'API d'administration, puis réduit à
@@ -22,7 +21,7 @@ export async function listUsers(): Promise<ManagedUser[]> {
 
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("*, user_cadres(cadres(id, full_name))")
+    .select("*")
     .order("full_name", { ascending: true });
 
   if (error) {
@@ -40,18 +39,10 @@ export async function listUsers(): Promise<ManagedUser[]> {
     (authUsers?.users ?? []).map((u) => [u.id, u.email ?? null]),
   );
 
-  return (profiles ?? []).map((profile) => {
-    const { user_cadres, ...rest } = profile;
-    return {
-      ...rest,
-      username: emailToUsername(emails.get(profile.id) ?? null),
-      cadres: (user_cadres ?? [])
-        .map((link) => link.cadres)
-        .filter((cadre): cadre is { id: string; full_name: string } =>
-          Boolean(cadre),
-        ),
-    };
-  });
+  return (profiles ?? []).map((profile) => ({
+    ...profile,
+    username: emailToUsername(emails.get(profile.id) ?? null),
+  }));
 }
 
 /** Nombre de super_admin actifs — sert à empêcher la perte du dernier accès. */

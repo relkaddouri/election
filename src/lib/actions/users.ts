@@ -46,7 +46,6 @@ type FormValues = {
   password: string;
   role: UserRole | null;
   isActive: boolean;
-  cadreIds: string[];
 };
 
 function readForm(formData: FormData): FormValues {
@@ -58,10 +57,6 @@ function readForm(formData: FormData): FormValues {
     password: String(formData.get("password") ?? ""),
     role: ROLES.includes(role as UserRole) ? (role as UserRole) : null,
     isActive: formData.get("is_active") === "on",
-    cadreIds: formData
-      .getAll("cadre_ids")
-      .map((value) => String(value))
-      .filter(Boolean),
   };
 }
 
@@ -96,19 +91,6 @@ function validate(
   }
 
   return { values: { ...values, role: values.role } };
-}
-
-/** Remplace l'affectation aux cadres par la liste fournie. */
-async function syncCadres(userId: string, cadreIds: string[]): Promise<void> {
-  const supabase = await createClient();
-  await supabase.from("user_cadres").delete().eq("user_id", userId);
-  if (cadreIds.length > 0) {
-    await supabase
-      .from("user_cadres")
-      .insert(
-        cadreIds.map((cadreId) => ({ user_id: userId, cadre_id: cadreId })),
-      );
-  }
 }
 
 function duplicateUsernameMessage(message: string): string | null {
@@ -156,11 +138,6 @@ export async function createUser(
     .from("profiles")
     .update({ full_name: values.fullName, role: values.role })
     .eq("id", data.user.id);
-
-  await syncCadres(
-    data.user.id,
-    values.role === "saisie" ? values.cadreIds : [],
-  );
 
   await logAudit("create", "user", data.user.id);
   revalidatePath("/utilisateurs");
@@ -247,7 +224,6 @@ export async function updateUser(
 
   // Un utilisateur qui n'est plus « saisie » n'a plus de périmètre : ses
   // affectations sont retirées pour ne pas ressurgir s'il le redevient.
-  await syncCadres(userId, values.role === "saisie" ? values.cadreIds : []);
 
   await logAudit("update", "user", userId);
   revalidatePath("/utilisateurs");

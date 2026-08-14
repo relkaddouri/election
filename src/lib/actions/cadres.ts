@@ -86,14 +86,9 @@ export async function createCadre(
     };
   }
 
-  // Identifiant décidé ici plutôt que réclamé en `RETURNING`.
-  //
-  // Un utilisateur « saisie » n'a le droit de lire un cadre que s'il figure
-  // dans `user_cadres` ; l'affectation est posée par un trigger AFTER INSERT.
-  // Or PostgreSQL évalue `RETURNING` — donc la policy SELECT — *avant* les
-  // triggers AFTER : un `.select()` ici échouerait en 42501 alors que la ligne
-  // vient d'être créée, et l'application signalerait une erreur pour une
-  // écriture réussie.
+  // Identifiant décidé ici plutôt que réclamé en `RETURNING` : une insertion
+  // sans clause de retour épargne un aller-retour, et l'identifiant est de
+  // toute façon nécessaire pour journaliser puis rediriger.
   const id = randomUUID();
 
   const supabase = await createClient();

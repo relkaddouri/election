@@ -50,12 +50,11 @@ Mise à jour de la section 17-18 : le rôle **saisie** peut désormais :
 
 | Fonction | Super Admin | Saisie |
 | --- | :---: | :---: |
-| Voir tous les cadres | ✅ | ✅ |
 | Créer un cadre | ✅ | ✅ |
-| Modifier n'importe quel cadre | ✅ | ✅ |
+| Modifier un cadre | ✅ | ✅ |
 | **Supprimer un cadre** | ✅ | ❌ |
 
-⚠️ **Changement important** : le rôle saisie a désormais accès à **tous les cadres de l'application**, sans restriction — ce n'est plus limité à une liste de cadres qui lui seraient assignés individuellement. La notion d'affectation d'un utilisateur saisie à des cadres spécifiques (table `user_cadres`) **n'est plus utilisée pour ce rôle**. Seul le Super Admin peut supprimer un cadre.
+Seul le **Super Admin** peut supprimer un cadre. Le rôle saisie reste limité à ses cadres autorisés (`user_cadres`) pour la modification — il ne modifie pas les cadres d'un autre utilisateur, sauf si le Super Admin l'y autorise explicitement.
 
 ### c) Gestion des utilisateurs — suppression de l'email, modification + mot de passe
 
@@ -64,20 +63,8 @@ Mise à jour de la section 17-18 : le rôle **saisie** peut désormais :
   1. **Recommandé (simple à mettre en œuvre)** : l'app génère automatiquement un email technique invisible pour l'utilisateur (ex. `nom.utilisateur@interne.local`), et l'identifiant affiché/utilisé pour se connecter est le **nom d'utilisateur** ou le **téléphone**. L'utilisateur ne voit/saisit jamais d'email.
   2. **Alternative** : authentification par téléphone + OTP (SMS) via Supabase — plus lourd à mettre en place et nécessite un fournisseur SMS payant, donc pas nécessaire pour un petit projet à 2 personnes.
 - Le Super Admin peut désormais :
-  - **Modifier** un utilisateur existant (nom, username, rôle, mot de passe) ;
+  - **Modifier** un utilisateur existant (nom, téléphone, rôle, cadres assignés) ;
   - **Réinitialiser/changer le mot de passe** d'un utilisateur directement depuis la page Utilisateurs (via l'API admin de Supabase, `supabase.auth.admin.updateUserById`).
-- ⚠️ **Changement important** : le formulaire de création/modification d'un utilisateur **ne comporte plus d'affectation de cadres**. Puisque le rôle saisie a accès à tous les cadres (voir point b ci-dessus), cette étape est supprimée du formulaire, pour n'importe quel rôle.
-
-### d) Permissions du rôle "saisie" — Dashboard et Rapports
-
-Précision sur les sections 12 (Dashboard) et 20/23 (PDF/Excel) : le rôle **saisie** a accès au Dashboard et à la partie Rapports, mais avec des restrictions :
-
-**Dashboard** — le rôle saisie voit le dashboard, sauf :
-- ❌ la carte "عدد المستخدمين" (nombre d'utilisateurs) — masquée pour saisie, visible pour super_admin uniquement
-
-**Rapports / Documents** — le rôle saisie :
-- ✅ peut télécharger le **PDF de n'importe quel cadre** (accès à tous les cadres, voir point b)
-- ❌ ne voit pas l'option d'**export Excel complet de la base** — réservée au super_admin uniquement
 
 ---
 
@@ -121,6 +108,7 @@ pour les tables suivantes :
 - electeurs (id, cadre_id, cin UNIQUE, full_name, phone,
   polling_station_number, polling_location, created_by, updated_by,
   created_at, updated_at)
+- user_cadres (user_id, cadre_id)
 - settings (id, party_name, territorial_community, logo_url, updated_at)
 - audit_logs (id, user_id, action, entity_type, entity_id, created_at)
 
@@ -133,12 +121,10 @@ Exigences impératives :
 - Active Row Level Security (RLS) sur toutes les tables
 - Écris les policies RLS de base selon les 3 rôles : super_admin,
   saisie, parlementaire (lecture seule pour ce dernier)
-- Le rôle "saisie" a accès à TOUS les cadres et TOUS les électeurs de
-  l'application (SELECT, INSERT, UPDATE), sans restriction par cadre —
-  il n'y a pas de notion d'affectation individuelle de cadres à un
-  utilisateur saisie, ni de table de liaison pour ça
-- Le rôle "saisie" peut créer et modifier n'importe quel cadre (mais pas
-  le supprimer — DELETE réservé à super_admin uniquement)
+- Le rôle "saisie" peut créer et modifier des cadres (mais pas les
+  supprimer — DELETE réservé à super_admin uniquement)
+- Un utilisateur "saisie" ne doit voir/modifier que les cadres présents
+  dans user_cadres pour son user_id
 - Ajoute les index nécessaires (cin, cadre_id, polling_station_number)
 - Fournis les migrations dans un dossier supabase/migrations/
 ```
@@ -226,11 +212,7 @@ Implémente la page "الناخبون" (section 14) avec :
 Crée le dashboard (section 12), adapté selon le rôle connecté :
 - Super Admin : total électeurs, total cadres, total utilisateurs,
   répartition par cadre (tableau + graphique simple)
-- Saisie : mêmes cartes de statistiques SAUF la carte "عدد المستخدمين"
-  (nombre d'utilisateurs), qui ne doit ni s'afficher ni être requêtée pour
-  ce rôle
-- Parlementaire : vue lecture seule des mêmes statistiques globales (sans
-  la carte utilisateurs non plus)
+- Parlementaire : vue lecture seule des mêmes statistiques globales
 - 100% responsive : cartes de stats empilées verticalement sur mobile,
   grille sur desktop
 - Tout en arabe RTL
@@ -246,11 +228,7 @@ Implémente (section 20, 23) :
    - Informations du cadre + tableau des électeurs
    - Gestion propre du multi-pages, texte arabe correctement rendu en PDF
      (attention aux polices arabes compatibles PDF)
-   - Accessible au Super Admin ET au rôle saisie, pour n'importe quel
-     cadre (le rôle saisie a accès à tous les cadres, pas de restriction
-     par affectation)
-2. Export Excel complet (Super Admin UNIQUEMENT — le rôle saisie ne doit
-   ni voir le bouton, ni pouvoir appeler la route d'export) :
+2. Export Excel complet (Super Admin uniquement) :
    - Un fichier .xlsx avec une feuille par cadre
    - En-tête de chaque feuille : logo, nom du parti, جماعة ترابية, nom du
      cadre, nombre d'électeurs
@@ -267,27 +245,16 @@ serveur pour le PDF, exceljs pour l'Excel).
 Implémente (sections 17-19, 21-22, 24) :
 - Page "الإعدادات" (Super Admin uniquement) : nom du parti, جماعة ترابية,
   upload/changement du logo (Supabase Storage)
-- Page "المستخدمون" (Super Admin uniquement), interface simple, une seule
-  page sans étapes multiples :
-  - Formulaire de création : nom complet, nom d'utilisateur (identifiant de
-    connexion), mot de passe (champ avec icône œil 👁 pour afficher/masquer),
-    rôle (super_admin / saisie / parlementaire). PAS de champ d'affectation
-    de cadres : le rôle saisie a accès à tous les cadres par défaut, donc
-    aucune sélection de cadres n'est nécessaire à la création
-  - AUCUN champ email visible. Générer en interne un email technique
-    invisible (ex. `username@interne.local`) uniquement pour satisfaire
-    Supabase Auth, jamais exposé dans l'UI
-  - Liste des utilisateurs existants, simple (nom, username, rôle)
-  - Modification d'un utilisateur : même formulaire simple, réutilisé en
-    mode édition — nom complet, username, rôle, ET le mot de passe
-    modifiable directement dans le même formulaire (même champ avec icône
-    œil, laissé vide = ne pas changer le mot de passe)
-  - Pas d'écran séparé "réinitialiser le mot de passe" : tout se fait dans
-    le même formulaire simple, en un seul enregistrement
-  - Le changement de mot de passe passe par une route serveur utilisant la
-    service role key de Supabase (jamais côté client), via
-    supabase.auth.admin.updateUserById — mais ça reste invisible pour
-    l'utilisateur, qui voit juste "حفظ" (Enregistrer)
+- Page "المستخدمون" (Super Admin uniquement) :
+  - Créer un utilisateur SANS champ email visible : uniquement nom complet,
+    téléphone, nom d'utilisateur (identifiant de connexion), mot de passe,
+    rôle, et cadres assignés (table user_cadres). Générer en interne un
+    email technique invisible (ex. `username@interne.local`) pour
+    satisfaire Supabase Auth, sans jamais l'exposer dans l'UI
+  - Modifier un utilisateur existant (nom, téléphone, rôle, cadres assignés)
+  - Réinitialiser/changer le mot de passe d'un utilisateur depuis cette
+    page (via supabase.auth.admin.updateUserById, appelé depuis une
+    route serveur avec la service role key — jamais côté client)
 - Journal d'audit "سجل العمليات" : enregistrer automatiquement les
   opérations importantes (ajout/modification/suppression d'électeur,
   création de cadre, etc.) avec utilisateur, action, date

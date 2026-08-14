@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { ColorPicker } from "@/components/settings/color-picker";
 import { Input } from "@/components/ui/input";
 import { updateSettings, type SettingsFormState } from "@/lib/actions/settings";
 import type { Settings } from "@/types";
@@ -43,6 +44,8 @@ export function SettingsForm({ settings }: { settings: Settings }) {
           aria-required="true"
         />
       </Field>
+
+      <ColorPicker defaultValue={settings.primary_color} />
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="logo" className="font-medium">

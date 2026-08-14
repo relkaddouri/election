@@ -26,10 +26,27 @@ export function isReadOnly(role: UserRole): boolean {
   return READ_ONLY_ROLES.includes(role);
 }
 
+/**
+ * Clé d'icône, résolue en composant dans `NavLinks`.
+ *
+ * Une chaîne plutôt que le composant lui-même : ce module est importé par des
+ * Server Actions et des utilitaires serveur, qui n'ont aucune raison de tirer
+ * la bibliothèque d'icônes avec eux.
+ */
+export type NavIcon =
+  | "dashboard"
+  | "cadres"
+  | "electeurs"
+  | "users"
+  | "reports"
+  | "settings"
+  | "journal";
+
 export type NavItem = {
   /** Libellé affiché, en arabe. */
   label: string;
   href: string;
+  icon: NavIcon;
   /** Rôles autorisés à voir l'entrée et à accéder à la route. */
   roles: readonly UserRole[];
 };
@@ -51,16 +68,37 @@ const ALL_ROLES: readonly UserRole[] = [
  * d'utilisateurs lui est retirée — et n'est alors même pas demandée à la base.
  */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { label: "الرئيسية", href: "/", roles: ALL_ROLES },
-  { label: "المؤطرون", href: "/cadres", roles: ALL_ROLES },
-  { label: "الناخبون", href: "/electeurs", roles: ALL_ROLES },
-  { label: "المستخدمون", href: "/utilisateurs", roles: ["super_admin"] },
-  { label: "التقارير", href: "/rapports", roles: ALL_ROLES },
-  { label: "الإعدادات", href: "/parametres", roles: ["super_admin"] },
+  { label: "الرئيسية", href: "/", icon: "dashboard", roles: ALL_ROLES },
+  { label: "المؤطرون", href: "/cadres", icon: "cadres", roles: ALL_ROLES },
+  {
+    label: "الناخبون",
+    href: "/electeurs",
+    icon: "electeurs",
+    roles: ALL_ROLES,
+  },
+  {
+    label: "المستخدمون",
+    href: "/utilisateurs",
+    icon: "users",
+    roles: ["super_admin"],
+  },
+  { label: "التقارير", href: "/rapports", icon: "reports", roles: ALL_ROLES },
+  {
+    label: "الإعدادات",
+    href: "/parametres",
+    icon: "settings",
+    roles: ["super_admin"],
+  },
   // Absent de la liste du cahier des charges (section 3) : le journal y est
   // demandé sans emplacement précis. Une entrée dédiée vaut mieux que de
   // l'enterrer dans les réglages.
-  { label: "سجل العمليات", href: "/journal", roles: ["super_admin"] },
+  {
+    label: "سجل العمليات",
+    href: "/journal",
+    // Absent de la liste fournie : ScrollText choisi par cohérence.
+    icon: "journal",
+    roles: ["super_admin"],
+  },
 ];
 
 export function navItemsForRole(role: UserRole): NavItem[] {
@@ -86,6 +124,15 @@ export const PUBLIC_ROUTES: readonly string[] = ["/login"];
 
 /** Taille de page par défaut des listes d'électeurs. */
 export const DEFAULT_PAGE_SIZE = 25;
+
+/**
+ * Couleur d'accent par défaut.
+ *
+ * Doit rester identique à `--color-primary` dans `globals.css` : la feuille de
+ * style s'en sert tant que la page n'a pas encore posé la valeur de la base,
+ * et le sélecteur de couleur des réglages en part quand rien n'est configuré.
+ */
+export const DEFAULT_PRIMARY_COLOR = "#0d844c";
 
 /** Délai d'anti-rebond de la vérification CIN en temps réel (ms). */
 export const CIN_CHECK_DEBOUNCE_MS = 400;

@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
-import { CadreCheckboxes } from "@/components/users/cadre-checkboxes";
 import { type UserFormState } from "@/lib/actions/users";
 import { ROLE_LABELS } from "@/lib/constants";
 import type { ManagedUser } from "@/lib/data/users";
-import type { CadreWithCount, UserRole } from "@/types";
+import type { UserRole } from "@/types";
 
 const ROLES: UserRole[] = ["saisie", "parlementaire", "super_admin"];
 
@@ -25,14 +24,12 @@ const ROLES: UserRole[] = ["saisie", "parlementaire", "super_admin"];
 export function UserForm({
   action,
   user,
-  cadres,
   isSelf = false,
   onDone,
 }: {
   action: (state: UserFormState, formData: FormData) => Promise<UserFormState>;
   /** Absent en création. */
   user?: ManagedUser;
-  cadres: CadreWithCount[];
   /** Empêche l'utilisateur de se retirer ses propres droits. */
   isSelf?: boolean;
   onDone?: () => void;
@@ -190,12 +187,6 @@ export function UserForm({
           </p>
         </>
       )}
-
-      <CadreCheckboxes
-        cadres={cadres}
-        selected={user?.cadres.map((cadre) => cadre.id) ?? []}
-        visible={values.role === "saisie"}
-      />
 
       {state?.error && (
         <p

@@ -11,17 +11,36 @@
   /* Breakpoint supplémentaire pour les petits smartphones (cible : 360px) */
   --breakpoint-xs: 22.5rem;
 
-  /* Couleurs de marque */
-  --color-brand-50: oklch(0.97 0.02 155);
-  --color-brand-100: oklch(0.94 0.04 155);
-  --color-brand-200: oklch(0.88 0.07 155);
-  --color-brand-300: oklch(0.8 0.11 155);
-  --color-brand-400: oklch(0.71 0.14 155);
-  --color-brand-500: oklch(0.63 0.15 155);
-  --color-brand-600: oklch(0.54 0.13 155);
-  --color-brand-700: oklch(0.45 0.11 155);
-  --color-brand-800: oklch(0.37 0.09 155);
-  --color-brand-900: oklch(0.3 0.07 155);
+  /*
+     Couleur d'accent.
+
+     Valeur de repli, utilisée tant que `settings.primary_color` n'est pas
+     renseignée. Le layout racine la remplace en posant `--color-primary` en
+     style inline sur <html>, dont la spécificité l'emporte sur ce `:root`.
+  */
+  --color-primary: #0d844c;
+
+  /*
+     Gamme dérivée de la couleur d'accent, jamais saisie à la main.
+
+     `color-mix()` est résolu par le navigateur : changer `--color-primary`
+     recolore les dix tons d'un coup, sans recompilation ni redéploiement.
+     Figer dix valeurs aurait obligé à calculer un dégradé côté serveur — et
+     un seul ton oublié aurait laissé du vert résiduel dans l'interface.
+
+     Mélange en `oklab` et non en `srgb` : l'espace perceptuel évite les tons
+     intermédiaires ternes que produit l'interpolation RVB.
+  */
+  --color-brand-50: color-mix(in oklab, var(--color-primary) 8%, white);
+  --color-brand-100: color-mix(in oklab, var(--color-primary) 16%, white);
+  --color-brand-200: color-mix(in oklab, var(--color-primary) 30%, white);
+  --color-brand-300: color-mix(in oklab, var(--color-primary) 45%, white);
+  --color-brand-400: color-mix(in oklab, var(--color-primary) 70%, white);
+  --color-brand-500: color-mix(in oklab, var(--color-primary) 88%, white);
+  --color-brand-600: var(--color-primary);
+  --color-brand-700: color-mix(in oklab, var(--color-primary) 82%, black);
+  --color-brand-800: color-mix(in oklab, var(--color-primary) 66%, black);
+  --color-brand-900: color-mix(in oklab, var(--color-primary) 52%, black);
 
   /* Surfaces neutres */
   --color-surface: oklch(1 0 0);

@@ -39,6 +39,12 @@ export async function updateSettings(
   const community = String(formData.get("territorial_community") ?? "").trim();
   const logo = formData.get("logo");
 
+  // `<input type="color">` ne peut produire qu'un `#rrggbb`. Une valeur vide
+  // ou malformée est ramenée à NULL, ce qui rétablit la couleur par défaut
+  // plutôt que de faire échouer l'enregistrement sur la contrainte en base.
+  const rawColor = String(formData.get("primary_color") ?? "").trim();
+  const primaryColor = /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : null;
+
   const supabase = await createClient();
 
   // Une ligne unique, garantie par l'index `settings_singleton_idx`.
@@ -97,6 +103,7 @@ export async function updateSettings(
       party_name: partyName || null,
       territorial_community: community || null,
       logo_url: logoUrl,
+      primary_color: primaryColor,
     })
     .eq("id", current.id);
 

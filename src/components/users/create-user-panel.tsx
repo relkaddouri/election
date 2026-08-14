@@ -5,10 +5,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { UserForm } from "@/components/users/user-form";
 import { createUser } from "@/lib/actions/users";
-import type { CadreWithCount } from "@/types";
 
 /** Ouvre le même formulaire que l'édition, en mode création. */
-export function CreateUserPanel({ cadres }: { cadres: CadreWithCount[] }) {
+export function CreateUserPanel() {
   const [open, setOpen] = useState(false);
   const [created, setCreated] = useState<string | null>(null);
 
@@ -35,7 +34,6 @@ export function CreateUserPanel({ cadres }: { cadres: CadreWithCount[] }) {
       <h2 className="mb-4 font-semibold">إضافة مستخدم جديد</h2>
       <UserForm
         action={createUser}
-        cadres={cadres}
         onDone={() => {
           setCreated("تم إنشاء المستخدم");
           setOpen(false);

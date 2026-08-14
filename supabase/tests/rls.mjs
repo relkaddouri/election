@@ -94,10 +94,6 @@ try {
   [cadreA, cadreB] = cs.map((c) => c.id);
   created.push(...cs.map((c) => c.id));
 
-  await admin
-    .from("user_cadres")
-    .insert({ user_id: ids.saisie, cadre_id: cadreA });
-
   await admin.from("electeurs").insert([
     {
       cadre_id: cadreA,
@@ -175,21 +171,12 @@ try {
   console.log("\n— Détection de doublon d'électeur (sections 15-16) —");
   const s = await session(users.saisie);
 
-  // BB2222 appartient au cadre B, hors du périmètre du compte « saisie » :
-  // c'est précisément le cas qu'une requête filtrée par le RLS raterait.
-  const invisible = await s.from("electeurs").select("cin").eq("cin", "BB2222");
-  check(
-    "l'électeur d'un cadre hors périmètre est bien invisible",
-    invisible.data?.length === 0,
-    `${invisible.data?.length} ligne(s)`,
-  );
-
   const { data: lookup } = await s.rpc("electeur_cin_lookup", {
     p_cin: " bb٢٢٢٢ ",
     p_exclude_id: null,
   });
   check(
-    "…mais le doublon est détecté et le cadre nommé",
+    "le doublon est détecté et le cadre nommé",
     lookup?.length === 1 && lookup[0].cadre_full_name === "مؤطر ب",
     lookup?.[0]?.cadre_full_name ?? "AUCUN DOUBLON DÉTECTÉ",
   );
@@ -201,66 +188,78 @@ try {
   check("un CIN libre ne remonte aucun doublon", libre?.length === 0);
 
   // رقم الترتيب : dérivé de la séquence d'insertion, jamais stocké ni saisi.
+  //
+  // La numérotation est PAR CADRE (`partition by cadre_id`) : elle repart à 1
+  // pour chacun. Vérifier la suite globale n'aurait de sens que si l'on ne
+  // voyait qu'un seul cadre — ce qui n'est plus le cas.
   const { data: ordered } = await s
     .from("electeurs_ordered")
-    .select("order_number, cin")
+    .select("order_number, cadre_id")
+    .order("cadre_id")
     .order("order_number");
+
+  const parCadre = new Map();
+  for (const row of ordered ?? []) {
+    parCadre.set(row.cadre_id, [
+      ...(parCadre.get(row.cadre_id) ?? []),
+      row.order_number,
+    ]);
+  }
+  const numérotationSaine = [...parCadre.values()].every((numéros) =>
+    numéros.every((n, index) => n === index + 1),
+  );
   check(
-    "رقم الترتيب numérote les électeurs à partir de 1, sans trou",
-    ordered?.length > 0 &&
-      ordered.every((row, index) => row.order_number === index + 1),
-    ordered?.map((r) => r.order_number).join(", "),
+    "رقم الترتيب repart à 1 dans chaque cadre, sans trou",
+    parCadre.size > 0 && numérotationSaine,
+    [...parCadre.values()].map((n) => `[${n.join(",")}]`).join(" "),
   );
 
   // --- saisie ----------------------------------------------------------------
-  console.log("\n— Rôle « saisie » (périmètre user_cadres) —");
+  console.log("\n— Rôle « saisie » (accès à tous les cadres) —");
+  const { data: tousCadres } = await admin.from("cadres").select("id");
   const sCadres = await s.from("cadres").select("id, full_name");
   check(
-    "ne voit que le cadre qui lui est affecté",
-    sCadres.data?.length === 1 && sCadres.data[0].id === cadreA,
-    `${sCadres.data?.length} cadre(s)`,
+    "voit TOUS les cadres, sans restriction d'affectation",
+    sCadres.data?.length === tousCadres?.length,
+    `${sCadres.data?.length} sur ${tousCadres?.length}`,
   );
-  const sElecteurs = await s.from("electeurs").select("cin");
-  const cins = (sElecteurs.data ?? []).map((e) => e.cin).sort();
-  check(
-    "voit les électeurs de son cadre, et eux seuls",
-    // BB2222 appartient au cadre B : son absence est ce qui prouve le
-    // cloisonnement. Le compte exact dépend du jeu de données.
-    cins.includes("AA1111") && !cins.includes("BB2222"),
-    cins.join(", "),
-  );
-  const sInsertOk = await s.from("electeurs").insert({
-    cadre_id: cadreA,
-    cin: "AA3333",
-    full_name: "ناخب جديد",
-    phone: "0600000000",
-    polling_station_number: "1",
-    polling_location: "مكان",
-  });
-  check("peut ajouter un électeur dans son cadre", !sInsertOk.error);
-  const sInsertKo = await s.from("electeurs").insert({
-    cadre_id: cadreB,
-    cin: "CC4444",
-    full_name: "hors périmètre",
-    phone: "0600000000",
-    polling_station_number: "1",
-    polling_location: "مكان",
-  });
-  check(
-    "ne peut PAS ajouter dans un cadre hors périmètre",
-    sInsertKo.error?.code === "42501",
-    sInsertKo.error?.code ?? "ACCEPTÉ À TORT",
-  );
-  const sMove = await s
+
+  const { count: tousElecteurs } = await admin
     .from("electeurs")
-    .update({ cadre_id: cadreB })
-    .eq("cin", "AA1111")
-    .select();
+    .select("*", { count: "exact", head: true });
+  const sElecteurs = await s.from("electeurs").select("cin");
   check(
-    "ne peut PAS déplacer un électeur vers un cadre hors périmètre",
-    sMove.error?.code === "42501" || sMove.data?.length === 0,
-    sMove.error?.code ?? `${sMove.data?.length} ligne(s) modifiée(s)`,
+    "voit TOUS les électeurs",
+    sElecteurs.data?.length === tousElecteurs,
+    `${sElecteurs.data?.length} sur ${tousElecteurs}`,
   );
+
+  // Le cadre B n'est plus « hors périmètre » : il doit être modifiable.
+  const sInsertB = await s.from("electeurs").insert({
+    cadre_id: cadreB,
+    cin: "OPEN0001",
+    full_name: "ناخب في المؤطر ب",
+    phone: "0600000000",
+    polling_station_number: "1",
+    polling_location: "مكان",
+  });
+  check(
+    "peut ajouter un électeur dans n'importe quel cadre",
+    !sInsertB.error,
+    sInsertB.error?.code ?? "accepté",
+  );
+
+  const sUpdB = await s
+    .from("cadres")
+    .update({ full_name: "مؤطر ب معدَّل" })
+    .eq("id", cadreB)
+    .select("id");
+  check(
+    "peut modifier n'importe quel cadre",
+    sUpdB.data?.length === 1,
+    sUpdB.error?.code ?? `${sUpdB.data?.length} ligne(s)`,
+  );
+
   // --- Création de cadres par le rôle « saisie » ----------------------------
   const nouveauCadreId = crypto.randomUUID();
   const sCadreInsert = await s.from("cadres").insert({
@@ -285,7 +284,7 @@ try {
     .eq("id", nouveauCadreId)
     .maybeSingle();
   check(
-    "le cadre créé lui devient visible (affectation automatique)",
+    "le cadre créé lui est immédiatement visible",
     cadreCree != null,
     cadreCree ? "visible" : "INVISIBLE",
   );
@@ -474,7 +473,6 @@ try {
   // --- Nettoyage -------------------------------------------------------------
   await admin.from("electeurs").delete().in("cadre_id", created);
   await admin.from("audit_logs").delete().in("user_id", Object.values(ids));
-  await admin.from("user_cadres").delete().in("user_id", Object.values(ids));
   await admin.from("cadres").delete().in("id", created);
   for (const id of Object.values(ids)) await admin.auth.admin.deleteUser(id);
   console.log(`\n${"=".repeat(52)}\n  ${pass} réussis, ${fail} échoués`);

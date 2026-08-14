@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { NavLinks } from "@/components/layout/nav-links";
 import type { NavItem } from "@/lib/constants";
+import { lockAppScroll } from "@/lib/scroll-lock";
 
 /**
  * Navigation en tiroir, affichée sous le point de rupture `lg`.
@@ -48,15 +49,16 @@ export function MobileNav({
     };
     document.addEventListener("keydown", onKeyDown);
 
-    // Empêche le défilement de la page derrière le tiroir.
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    // Empêche le défilement du contenu derrière le tiroir. Cible `<main>` et
+    // non `body` : depuis que la coquille fige la barre latérale, c'est lui
+    // qui porte le défilement.
+    const unlockScroll = lockAppScroll();
 
     panelRef.current?.focus();
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
+      unlockScroll();
       // Rend le focus au bouton d'ouverture plutôt que de le perdre en haut
       // du document.
       trigger?.focus();

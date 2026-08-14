@@ -31,25 +31,6 @@ async function findByEmail(email) {
 }
 
 if (mode === "create") {
-  const { data: cadres } = await admin
-    .from("cadres")
-    .insert([
-      {
-        cin: "CADRE-A-001",
-        full_name: "مؤطر تجريبي أ",
-        phone: "0600000001",
-        polling_station_number: "101",
-        polling_location: "مدرسة النهضة",
-      },
-      {
-        cin: "CADRE-B-002",
-        full_name: "مؤطر تجريبي ب",
-        polling_station_number: "102",
-        polling_location: "ثانوية الأطلس",
-      },
-    ])
-    .select("id");
-
   for (const acc of ACCOUNTS) {
     const existing = await findByEmail(acc.email);
     if (existing) await admin.auth.admin.deleteUser(existing.id);
@@ -67,11 +48,6 @@ if (mode === "create") {
       .update({ role: acc.role })
       .eq("id", data.user.id);
 
-    if (acc.role === "saisie") {
-      await admin
-        .from("user_cadres")
-        .insert({ user_id: data.user.id, cadre_id: cadres[0].id });
-    }
     console.log(`✅ ${acc.email} (${acc.role}) — mot de passe : ${PASSWORD}`);
   }
   console.log(

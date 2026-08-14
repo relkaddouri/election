@@ -9,7 +9,6 @@ export type Cadre = Tables<"cadres">;
 export type Electeur = Tables<"electeurs">;
 export type Settings = Tables<"settings">;
 export type AuditLog = Tables<"audit_logs">;
-export type UserCadre = Tables<"user_cadres">;
 
 /**
  * Cadre enrichi du nombre d'électeurs.

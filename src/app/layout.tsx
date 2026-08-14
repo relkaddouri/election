@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Cairo } from "next/font/google";
 import "./globals.css";
 
+import { getBranding } from "@/lib/data/branding";
+
 /**
  * Cairo : police variable couvrant l'arabe et le latin.
  * `subsets: ["arabic", "latin"]` garde le latin pour les CIN, numéros de
@@ -30,9 +32,22 @@ export const viewport: Viewport = {
   themeColor: "#ffffff",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const { primaryColor } = await getBranding();
+
   return (
-    <html lang="ar" dir="rtl" className={`${cairo.variable} h-full`}>
+    /*
+      La couleur d'accent est posée en style inline sur <html> : sa spécificité
+      l'emporte sur le `:root` de la feuille de style, et toute la gamme
+      `brand-*` en découle par `color-mix()`. Rien à recompiler ni à
+      redéployer quand elle change.
+    */
+    <html
+      lang="ar"
+      dir="rtl"
+      className={`${cairo.variable} h-full`}
+      style={{ "--color-primary": primaryColor } as React.CSSProperties}
+    >
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

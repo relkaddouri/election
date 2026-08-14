@@ -7,16 +7,13 @@ import { UserForm } from "@/components/users/user-form";
 import { updateUser } from "@/lib/actions/users";
 import { ROLE_BADGES, ROLE_LABELS } from "@/lib/constants";
 import type { ManagedUser } from "@/lib/data/users";
-import type { CadreWithCount } from "@/types";
 
 /** Ligne de liste : nom, identifiant, rôle — puis le même formulaire en édition. */
 export function UserCard({
   user,
-  cadres,
   isSelf,
 }: {
   user: ManagedUser;
-  cadres: CadreWithCount[];
   isSelf: boolean;
 }) {
   const [editing, setEditing] = useState(false);
@@ -45,13 +42,6 @@ export function UserCard({
             <span aria-hidden="true">{ROLE_BADGES[user.role]}</span>{" "}
             {ROLE_LABELS[user.role]}
           </p>
-          {user.role === "saisie" && (
-            <p className="mt-1 text-sm text-slate-600">
-              {user.cadres.length === 0
-                ? "لا يوجد مؤطر مسند — لن يرى أي ناخب"
-                : `المؤطرون : ${user.cadres.map((c) => c.full_name).join("، ")}`}
-            </p>
-          )}
         </div>
 
         <Button
@@ -68,7 +58,6 @@ export function UserCard({
           <UserForm
             action={updateUser.bind(null, user.id)}
             user={user}
-            cadres={cadres}
             isSelf={isSelf}
           />
         </div>

@@ -1,17 +1,45 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 
 import { LoginForm } from "@/app/login/login-form";
+import { getBranding } from "@/lib/data/branding";
 
 export const metadata: Metadata = {
   title: "تسجيل الدخول",
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  // Lisible sans session : une policy autorise le rôle `anon` à lire les
+  // seules colonnes d'habillage de `settings`.
+  const { partyName, logoUrl } = await getBranding();
+
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <header className="mb-6 text-center">
-          <h1 className="text-2xl font-bold">تدبير الناخبين</h1>
+          {/*
+            Aucun emplacement réservé quand le logo n'est pas configuré : ni
+            cadre vide, ni image cassée — l'en-tête se referme simplement sur
+            le nom du parti.
+          */}
+          {logoUrl && (
+            <Image
+              src={logoUrl}
+              alt={partyName ?? ""}
+              width={96}
+              height={96}
+              // L'image vient de Supabase Storage, un domaine externe.
+              // L'optimiseur Next exigerait de le déclarer en configuration,
+              // pour un unique logo affiché une fois.
+              unoptimized
+              priority
+              className="mx-auto mb-4 h-24 w-auto object-contain"
+            />
+          )}
+
+          <h1 className="text-2xl font-bold">
+            {partyName ?? "تدبير الناخبين"}
+          </h1>
           <p className="mt-1 text-sm text-slate-600">
             سجّل الدخول للمتابعة إلى النظام
           </p>

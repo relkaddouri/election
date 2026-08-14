@@ -139,40 +139,15 @@ export type Database = {
           },
         ];
       };
-      user_cadres: {
-        Row: {
-          user_id: string;
-          cadre_id: string;
-        };
-        Insert: {
-          user_id: string;
-          cadre_id: string;
-        };
-        Update: {
-          user_id?: string;
-          cadre_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: "user_cadres_cadre_id_fkey";
-            columns: ["cadre_id"];
-            referencedRelation: "cadres";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "user_cadres_user_id_fkey";
-            columns: ["user_id"];
-            referencedRelation: "profiles";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
       settings: {
         Row: {
           id: string;
           party_name: string | null;
           territorial_community: string | null;
           logo_url: string | null;
+          /** Hexadécimal `#rrggbb`, contraint en base. NULL = couleur par
+           *  défaut de l'application. */
+          primary_color: string | null;
           updated_at: string;
         };
         Insert: {
@@ -180,6 +155,7 @@ export type Database = {
           party_name?: string | null;
           territorial_community?: string | null;
           logo_url?: string | null;
+          primary_color?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -187,6 +163,7 @@ export type Database = {
           party_name?: string | null;
           territorial_community?: string | null;
           logo_url?: string | null;
+          primary_color?: string | null;
           updated_at?: string;
         };
         Relationships: [];

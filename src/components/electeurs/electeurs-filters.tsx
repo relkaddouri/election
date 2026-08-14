@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { FilterSelect, type FilterOption } from "@/components/ui/filter-select";
+import { lockAppScroll } from "@/lib/scroll-lock";
 
 /** Paramètres d'URL considérés comme des filtres (la recherche est à part). */
 const FILTER_PARAMS = ["cadre", "bureau", "lieu"] as const;
@@ -78,13 +79,12 @@ export function ElecteursFilters({
     };
     document.addEventListener("keydown", onKeyDown);
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlockScroll = lockAppScroll();
     panelRef.current?.focus();
 
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = previousOverflow;
+      unlockScroll();
       trigger?.focus();
     };
   }, [open]);

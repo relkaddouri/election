@@ -96,6 +96,30 @@ docs/                   Cahier des charges
 - Les tableaux deviennent des cartes empilées sur mobile ; les filtres passent
   dans un tiroir.
 
+### Défilement
+
+**Un seul défilement existe dans l'application, celui de `<main>`.** La coquille
+occupe exactement la hauteur de la fenêtre (`h-dvh`) et interdit tout
+débordement : la page ne défile jamais, la barre latérale reste donc visible
+quelle que soit la longueur du contenu.
+
+Trois conséquences à connaître avant de toucher au layout :
+
+- **Un verrou de défilement ne doit pas viser `document.body`** mais le
+  conteneur `#app-scroll`. Utiliser `lockAppScroll()`
+  ([`lib/scroll-lock.ts`](src/lib/scroll-lock.ts)), déjà employé par les deux
+  tiroirs.
+- **Next.js ne peut plus remonter en haut à la navigation** : il agit sur la
+  fenêtre, qui ne défile plus. `ScrollReset` s'en charge, sur changement de
+  route et de numéro de page — pas sur les filtres, où l'on veut conserver sa
+  position.
+- **La barre latérale reste un élément du flux flex**, jamais `fixed` : sa
+  place est réservée par la mise en page, et l'ordre du flux la met à droite en
+  RTL sans aucune coordonnée codée en dur à inverser.
+
+`h-dvh` et non `h-screen` : sur mobile, `vh` ignore la barre d'adresse du
+navigateur et la coquille dépasserait du bas de l'écran.
+
 ### Sécurité des données
 
 Le projet manipule des données personnelles (CIN, téléphones). Dépôt à garder
@@ -115,18 +139,19 @@ Le projet manipule des données personnelles (CIN, téléphones). Dépôt à gar
 Migrations dans [`supabase/migrations/`](supabase/migrations/), appliquées sur
 le projet Supabase.
 
-| Migration                             | Contenu                                      |
-| ------------------------------------- | -------------------------------------------- |
-| `…_initial_schema.sql`                | Tables, index, triggers, activation du RLS   |
-| `…_rls_policies.sql`                  | Fonctions d'aide et policies par rôle        |
-| `…_storage_logo.sql`                  | Bucket `public-assets` pour le logo du parti |
-| `…_cadres_person_fields.sql`          | Le cadre devient une personne identifiée     |
-| `…_cadres_view_and_cin_check.sql`     | Vue de comptage + vérification CIN           |
-| `…_electeurs_view_and_cin_lookup.sql` | رقم الترتيب + détection de doublon           |
-| `…_electeurs_insertion_sequence.sql`  | Ordre d'insertion déterministe               |
-| `…_electeurs_required_fields.sql`     | Téléphone, bureau et lieu obligatoires       |
-| `…_electeurs_filter_options.sql`      | Valeurs distinctes pour les filtres          |
-| `…_authorship_and_saisie_…sql`        | created_by/updated_by + création par saisie  |
+| Migration                                  | Contenu                                      |
+| ------------------------------------------ | -------------------------------------------- |
+| `…_initial_schema.sql`                     | Tables, index, triggers, activation du RLS   |
+| `…_rls_policies.sql`                       | Fonctions d'aide et policies par rôle        |
+| `…_storage_logo.sql`                       | Bucket `public-assets` pour le logo du parti |
+| `…_cadres_person_fields.sql`               | Le cadre devient une personne identifiée     |
+| `…_cadres_view_and_cin_check.sql`          | Vue de comptage + vérification CIN           |
+| `…_electeurs_view_and_cin_lookup.sql`      | رقم الترتيب + détection de doublon           |
+| `…_electeurs_insertion_sequence.sql`       | Ordre d'insertion déterministe               |
+| `…_electeurs_required_fields.sql`          | Téléphone, bureau et lieu obligatoires       |
+| `…_electeurs_filter_options.sql`           | Valeurs distinctes pour les filtres          |
+| `…_authorship_and_saisie_…sql`             | created_by/updated_by + création par saisie  |
+| `…_drop_user_cadres_open_saisie_scope.sql` | Fin du cloisonnement par affectation         |
 
 ```bash
 npm run db:push
