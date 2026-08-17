@@ -154,7 +154,6 @@ export default async function CadreDetailPage({
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2 lg:col-span-2">
             <SearchInput
-              mode="submit"
               label="البحث في ناخبي المؤطر"
               placeholder="ابحث بالاسم أو رقم البطاقة أو الهاتف"
             />

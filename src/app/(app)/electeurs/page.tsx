@@ -58,7 +58,6 @@ export default async function ElecteursPage({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="flex-1">
             <SearchInput
-              mode="submit"
               label="البحث في الناخبين"
               placeholder="ابحث بالاسم أو رقم البطاقة أو الهاتف"
             />
