@@ -122,6 +122,19 @@ export const ACCESS_DENIED_ROUTE = "/acces-refuse";
 /** Routes accessibles sans session. */
 export const PUBLIC_ROUTES: readonly string[] = ["/login"];
 
+/**
+ * Déconnexion automatique après inactivité.
+ *
+ * Le délai porte sur l'absence totale d'interaction ; l'avertissement laisse
+ * une minute pour réagir avant la coupure.
+ */
+export const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+export const INACTIVITY_WARNING_MS = 60 * 1000;
+
+/** Motif de déconnexion transmis à la page de connexion. */
+export const LOGOUT_REASON_PARAM = "raison";
+export const INACTIVITY_REASON = "inactivite";
+
 /** Taille de page par défaut des listes d'électeurs. */
 export const DEFAULT_PAGE_SIZE = 25;
 
