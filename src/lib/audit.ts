@@ -2,9 +2,10 @@ import "server-only";
 
 import { createClient } from "@/lib/supabase/server";
 
-export type AuditAction = "create" | "update" | "delete" | "login" | "export";
+export type AuditAction =
+  "create" | "update" | "delete" | "login" | "export" | "email";
 
-export type AuditEntity = "cadre" | "electeur" | "user" | "settings";
+export type AuditEntity = "cadre" | "electeur" | "user" | "settings" | "report";
 
 /**
  * Journalise une opération dans « سجل العمليات ».

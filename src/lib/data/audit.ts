@@ -12,6 +12,13 @@ export type AuditEntry = {
   createdAt: string;
   /** `null` si le compte a été supprimé — la trace, elle, reste. */
   userName: string | null;
+  /**
+   * Écrit sans session : seule la tâche planifiée en produit. `logAudit()`
+   * abandonne quand il n'y a pas d'utilisateur, donc un `user_id` nul ne peut
+   * pas venir d'une action humaine — c'est ce qui distingue un envoi
+   * automatique d'une trace laissée par un compte supprimé depuis.
+   */
+  system: boolean;
 };
 
 /**
@@ -37,7 +44,7 @@ export async function listAuditLogs({
   let query = supabase
     .from("audit_logs")
     .select(
-      "id, action, entity_type, entity_id, created_at, profiles(full_name)",
+      "id, action, entity_type, entity_id, created_at, user_id, profiles(full_name)",
       {
         count: "exact",
       },
@@ -65,6 +72,7 @@ export async function listAuditLogs({
       entityId: row.entity_id,
       createdAt: row.created_at,
       userName: row.profiles?.full_name ?? null,
+      system: row.user_id === null,
     })),
     total: count ?? 0,
     page: safePage,

@@ -6,6 +6,7 @@ import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { ColorPicker } from "@/components/settings/color-picker";
+import { ReportScheduleFields } from "@/components/settings/report-schedule-fields";
 import { Input } from "@/components/ui/input";
 import { updateSettings, type SettingsFormState } from "@/lib/actions/settings";
 import {
@@ -130,6 +131,8 @@ export function SettingsForm({ settings }: { settings: Settings }) {
           />
         </Field>
       </div>
+
+      <ReportScheduleFields settings={settings} />
 
       {state?.error && (
         <p

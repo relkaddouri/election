@@ -8,7 +8,9 @@ import {
   MIN_INACTIVITY_TIMEOUT_MINUTES,
 } from "@/lib/constants";
 import { isSupabaseConfigured } from "@/lib/env";
+import type { ReportClient } from "@/lib/reports/data";
 import { createClient } from "@/lib/supabase/server";
+import type { ReportFrequency } from "@/types";
 
 /**
  * Délai d'inactivité configuré, en millisecondes.
@@ -50,3 +52,46 @@ export const getInactivityTimeoutMs = cache(async (): Promise<number> => {
     return fallback;
   }
 });
+
+export type ReportSchedule = {
+  /** Identifiant de la ligne unique — la tâche planifiée doit la mettre à jour. */
+  id: string;
+  email: string | null;
+  frequency: ReportFrequency;
+  weekday: number | null;
+  dayOfMonth: number | null;
+  enabled: boolean;
+  lastSentAt: string | null;
+};
+
+/**
+ * Planification de l'envoi du rapport.
+ *
+ * Lue par la page « التقارير » — qui n'a besoin que du destinataire — et par la
+ * tâche planifiée, qui a besoin de tout. Un seul aller-retour dans les deux
+ * cas ; la ligne `settings` compte moins de dix colonnes.
+ */
+export async function getReportSchedule(
+  client?: ReportClient,
+): Promise<ReportSchedule | null> {
+  const supabase = client ?? (await createClient());
+  const { data } = await supabase
+    .from("settings")
+    .select(
+      "id, report_email, report_frequency, report_weekday, report_day_of_month, report_enabled, last_report_sent_at",
+    )
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+
+  return {
+    id: data.id,
+    email: data.report_email?.trim() || null,
+    frequency: data.report_frequency,
+    weekday: data.report_weekday,
+    dayOfMonth: data.report_day_of_month,
+    enabled: data.report_enabled,
+    lastSentAt: data.last_report_sent_at,
+  };
+}

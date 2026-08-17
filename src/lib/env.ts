@@ -53,3 +53,27 @@ export const publicEnv = {
 export function getSecretKey(): string {
   return required(process.env.SUPABASE_SECRET_KEY, "SUPABASE_SECRET_KEY");
 }
+
+/** Clé d'API Resend, pour l'envoi du rapport Excel par e-mail. */
+export function getResendApiKey(): string {
+  return required(process.env.RESEND_API_KEY, "RESEND_API_KEY");
+}
+
+/**
+ * Vrai si l'envoi d'e-mails est configuré.
+ *
+ * Permet à la page « التقارير » de masquer le bouton d'envoi plutôt que de le
+ * proposer pour qu'il échoue au clic.
+ */
+export const isEmailConfigured = Boolean(process.env.RESEND_API_KEY);
+
+/**
+ * Secret partagé avec le planificateur Vercel.
+ *
+ * Renvoie `null` s'il n'est pas défini : la route cron refuse alors toutes les
+ * requêtes. Une absence de secret ne doit jamais valoir autorisation — sans
+ * cela, oublier la variable exposerait publiquement l'export complet.
+ */
+export function getCronSecret(): string | null {
+  return process.env.CRON_SECRET || null;
+}
