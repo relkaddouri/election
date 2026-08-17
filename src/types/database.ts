@@ -148,6 +148,8 @@ export type Database = {
           /** Hexadécimal `#rrggbb`, contraint en base. NULL = couleur par
            *  défaut de l'application. */
           primary_color: string | null;
+          /** Minutes d'inactivité avant déconnexion. NULL = valeur par défaut. */
+          inactivity_timeout_minutes: number | null;
           updated_at: string;
         };
         Insert: {
@@ -156,6 +158,7 @@ export type Database = {
           territorial_community?: string | null;
           logo_url?: string | null;
           primary_color?: string | null;
+          inactivity_timeout_minutes?: number | null;
           updated_at?: string;
         };
         Update: {
@@ -164,6 +167,7 @@ export type Database = {
           territorial_community?: string | null;
           logo_url?: string | null;
           primary_color?: string | null;
+          inactivity_timeout_minutes?: number | null;
           updated_at?: string;
         };
         Relationships: [];

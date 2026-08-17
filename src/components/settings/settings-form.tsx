@@ -8,6 +8,11 @@ import { Field } from "@/components/ui/field";
 import { ColorPicker } from "@/components/settings/color-picker";
 import { Input } from "@/components/ui/input";
 import { updateSettings, type SettingsFormState } from "@/lib/actions/settings";
+import {
+  DEFAULT_INACTIVITY_TIMEOUT_MINUTES,
+  MAX_INACTIVITY_TIMEOUT_MINUTES,
+  MIN_INACTIVITY_TIMEOUT_MINUTES,
+} from "@/lib/constants";
 import type { Settings } from "@/types";
 
 export function SettingsForm({ settings }: { settings: Settings }) {
@@ -19,6 +24,11 @@ export function SettingsForm({ settings }: { settings: Settings }) {
   const [partyName, setPartyName] = useState(settings.party_name ?? "");
   const [community, setCommunity] = useState(
     settings.territorial_community ?? "",
+  );
+  const [timeoutMinutes, setTimeoutMinutes] = useState(
+    String(
+      settings.inactivity_timeout_minutes ?? DEFAULT_INACTIVITY_TIMEOUT_MINUTES,
+    ),
   );
   // Aperçu local du fichier choisi, avant tout envoi au serveur.
   const [preview, setPreview] = useState<string | null>(null);
@@ -90,6 +100,35 @@ export function SettingsForm({ settings }: { settings: Settings }) {
             </p>
           </div>
         </div>
+      </div>
+
+      <div className="border-t border-line pt-5">
+        <Field
+          id="inactivity_timeout_minutes"
+          label="مدة الخمول قبل تسجيل الخروج التلقائي (بالدقائق)"
+          required
+          hint={
+            <p className="text-sm text-slate-500">
+              بين {MIN_INACTIVITY_TIMEOUT_MINUTES} و{" "}
+              {MAX_INACTIVITY_TIMEOUT_MINUTES} دقيقة. يُطبَّق على جميع
+              المستخدمين، ويظهر تنبيه قبل الخروج بدقيقة.
+            </p>
+          }
+        >
+          {/* `type="text"` et non `number` : un champ numérique déclencherait
+              une bulle de validation native, rédigée dans la langue du
+              navigateur, au milieu d'une interface arabe. Le contrôle des
+              bornes appartient au serveur et à la contrainte en base. */}
+          <Input
+            id="inactivity_timeout_minutes"
+            name="inactivity_timeout_minutes"
+            inputMode="numeric"
+            value={timeoutMinutes}
+            onChange={(event) => setTimeoutMinutes(event.target.value)}
+            aria-required="true"
+            className="max-w-32 ltr-field"
+          />
+        </Field>
       </div>
 
       {state?.error && (

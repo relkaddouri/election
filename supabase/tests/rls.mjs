@@ -344,6 +344,19 @@ try {
     "ne peut PAS modifier les paramètres",
     sSettings.error != null || sSettings.data?.length === 0,
   );
+  // Le délai d'inactivité est réglé par le super_admin mais s'applique à tous :
+  // s'il devenait illisible pour ce rôle, la session couperait au bout de la
+  // valeur de repli sans que rien ne le signale.
+  const sTimeout = await s
+    .from("settings")
+    .select("inactivity_timeout_minutes")
+    .limit(1)
+    .maybeSingle();
+  check(
+    "lit le délai d'inactivité",
+    sTimeout.error == null,
+    sTimeout.error?.code ?? "ok",
+  );
 
   // --- parlementaire ---------------------------------------------------------
   console.log("\n— Rôle « parlementaire » (lecture seule) —");
@@ -391,6 +404,16 @@ try {
     "ne peut PAS supprimer d'électeur",
     pDelete.error != null || pDelete.data?.length === 0,
   );
+  const pTimeout = await p
+    .from("settings")
+    .select("inactivity_timeout_minutes")
+    .limit(1)
+    .maybeSingle();
+  check(
+    "lit le délai d'inactivité",
+    pTimeout.error == null,
+    pTimeout.error?.code ?? "ok",
+  );
 
   // --- super_admin -----------------------------------------------------------
   console.log("\n— Rôle « super_admin » —");
@@ -414,6 +437,39 @@ try {
     aProfiles.data?.length >= 3,
     `${aProfiles.data?.length} profil(s)`,
   );
+  // Bornes du délai d'inactivité : la contrainte CHECK est le dernier rempart
+  // si un jour une écriture contourne la Server Action.
+  //
+  // Le test tourne sur la base réelle : la valeur réglée par l'exploitant est
+  // relevée avant d'être écrasée, puis remise en place.
+  const { data: timeoutAvant } = await a
+    .from("settings")
+    .select("inactivity_timeout_minutes")
+    .limit(1)
+    .maybeSingle();
+  const aTimeoutOk = await a
+    .from("settings")
+    .update({ inactivity_timeout_minutes: 30 })
+    .neq("id", "00000000-0000-0000-0000-000000000000")
+    .select("inactivity_timeout_minutes");
+  check("peut régler le délai d'inactivité", !aTimeoutOk.error);
+  const aTimeoutKo = await a
+    .from("settings")
+    .update({ inactivity_timeout_minutes: 0 })
+    .neq("id", "00000000-0000-0000-0000-000000000000")
+    .select();
+  check(
+    "délai hors bornes refusé par la base",
+    aTimeoutKo.error?.code === "23514",
+    aTimeoutKo.error?.code ?? "ACCEPTÉ À TORT",
+  );
+  await a
+    .from("settings")
+    .update({
+      inactivity_timeout_minutes:
+        timeoutAvant?.inactivity_timeout_minutes ?? null,
+    })
+    .neq("id", "00000000-0000-0000-0000-000000000000");
 
   // --- audit_logs ------------------------------------------------------------
   console.log("\n— Journal d'audit (append-only) —");
