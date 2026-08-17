@@ -19,6 +19,9 @@ export type Json =
 /** Rôles applicatifs (cf. sections 17-19 du cahier des charges). */
 export type UserRole = "super_admin" | "saisie" | "parlementaire";
 
+/** Périodicité de l'envoi automatique du rapport Excel. */
+export type ReportFrequency = "daily" | "weekly" | "monthly";
+
 export type Database = {
   public: {
     Tables: {
@@ -150,6 +153,15 @@ export type Database = {
           primary_color: string | null;
           /** Minutes d'inactivité avant déconnexion. NULL = valeur par défaut. */
           inactivity_timeout_minutes: number | null;
+          /** Destinataire du rapport Excel — envoi manuel et automatique. */
+          report_email: string | null;
+          report_frequency: ReportFrequency;
+          /** 0 = dimanche … 6 = samedi. Renseigné si `weekly`. */
+          report_weekday: number | null;
+          /** Quantième 1-31. Renseigné si `monthly`. */
+          report_day_of_month: number | null;
+          report_enabled: boolean;
+          last_report_sent_at: string | null;
           updated_at: string;
         };
         Insert: {
@@ -159,6 +171,12 @@ export type Database = {
           logo_url?: string | null;
           primary_color?: string | null;
           inactivity_timeout_minutes?: number | null;
+          report_email?: string | null;
+          report_frequency?: ReportFrequency;
+          report_weekday?: number | null;
+          report_day_of_month?: number | null;
+          report_enabled?: boolean;
+          last_report_sent_at?: string | null;
           updated_at?: string;
         };
         Update: {
@@ -168,6 +186,12 @@ export type Database = {
           logo_url?: string | null;
           primary_color?: string | null;
           inactivity_timeout_minutes?: number | null;
+          report_email?: string | null;
+          report_frequency?: ReportFrequency;
+          report_weekday?: number | null;
+          report_day_of_month?: number | null;
+          report_enabled?: boolean;
+          last_report_sent_at?: string | null;
           updated_at?: string;
         };
         Relationships: [];
@@ -284,6 +308,7 @@ export type Database = {
     };
     Enums: {
       user_role: UserRole;
+      report_frequency: ReportFrequency;
     };
     CompositeTypes: Record<never, never>;
   };

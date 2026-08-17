@@ -1,4 +1,4 @@
-import type { UserRole } from "@/types/database";
+import type { ReportFrequency, UserRole } from "@/types/database";
 
 /**
  * Libellés arabes des rôles (cf. sections 17-19 du cahier des charges).
@@ -197,6 +197,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   delete: "حذف",
   login: "تسجيل دخول",
   export: "تصدير",
+  email: "إرسال بالبريد الإلكتروني",
 };
 
 export const AUDIT_ENTITY_LABELS: Record<string, string> = {
@@ -204,4 +205,53 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   electeur: "ناخب",
   user: "مستخدم",
   settings: "إعدادات",
+  report: "تقرير",
 };
+
+/* -------------------------------------------------------------------------
+   Envoi du rapport Excel par e-mail
+   ------------------------------------------------------------------------- */
+
+export const REPORT_FREQUENCY_LABELS: Record<ReportFrequency, string> = {
+  daily: "يومياً",
+  weekly: "أسبوعياً",
+  monthly: "شهرياً",
+};
+
+/** 0 = dimanche … 6 = samedi, dans l'ordre de `Date.getDay()`. */
+export const WEEKDAY_LABELS = [
+  "الأحد",
+  "الاثنين",
+  "الثلاثاء",
+  "الأربعاء",
+  "الخميس",
+  "الجمعة",
+  "السبت",
+] as const;
+
+/**
+ * Fuseau de référence de la planification.
+ *
+ * Toutes les décisions d'échéance — « quel jour sommes-nous ? », « le rapport
+ * est-il déjà parti aujourd'hui ? » — sont prises dans ce fuseau et non en UTC.
+ * Le cron Vercel se déclenche à 05:00 UTC, soit 06:00 au Maroc ; en UTC, un
+ * envoi mensuel réglé au 1er partirait encore le dernier jour du mois
+ * précédent.
+ */
+export const REPORT_TIMEZONE = "Africa/Casablanca";
+
+/** Heure d'envoi automatique, affichée dans les réglages. */
+export const REPORT_SEND_HOUR_LABEL = "06:00";
+
+/** Objet de l'e-mail et base du nom de la pièce jointe. */
+export const REPORT_EMAIL_SUBJECT = "تقرير الناخبين";
+
+/**
+ * Expéditeur par défaut.
+ *
+ * `onboarding@resend.dev` est le domaine de test de Resend : il fonctionne sans
+ * aucune configuration, mais n'accepte d'écrire qu'à l'adresse du titulaire du
+ * compte. Pour envoyer à un tiers, il faut vérifier un domaine et renseigner
+ * `REPORT_FROM_EMAIL` (voir docs/cron-setup.md).
+ */
+export const DEFAULT_REPORT_FROM = "تقارير الناخبين <onboarding@resend.dev>";

@@ -87,7 +87,7 @@ export default async function JournalPage({
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-slate-600">
-                  {entry.userName ?? "مستخدم محذوف"}
+                  {entry.userName ?? (entry.system ? "النظام" : "مستخدم محذوف")}
                 </p>
                 <p className="mt-1 ltr-field text-sm text-slate-500">
                   {dateFormatter.format(new Date(entry.createdAt))}
@@ -116,7 +116,10 @@ export default async function JournalPage({
                     <td className="p-3 ltr-field">
                       {dateFormatter.format(new Date(entry.createdAt))}
                     </td>
-                    <td className="p-3">{entry.userName ?? "مستخدم محذوف"}</td>
+                    <td className="p-3">
+                      {entry.userName ??
+                        (entry.system ? "النظام" : "مستخدم محذوف")}
+                    </td>
                     <td className="p-3 font-medium">
                       {AUDIT_ACTION_LABELS[entry.action] ?? entry.action}
                     </td>

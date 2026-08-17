@@ -1,8 +1,10 @@
 import Link from "next/link";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { SendReportButton } from "@/components/reports/send-report-button";
 import { requireRole } from "@/lib/auth";
 import { listCadres } from "@/lib/data/cadres";
+import { getReportSchedule } from "@/lib/data/settings";
 import { formatNumber } from "@/lib/utils";
 
 export default async function RapportsPage() {
@@ -12,6 +14,10 @@ export default async function RapportsPage() {
   //   les siens, et l'endpoint PDF répond 404 pour les autres.
   const user = await requireRole(["super_admin", "saisie", "parlementaire"]);
   const cadres = await listCadres({});
+  // Le destinataire n'est lu que pour le super_admin : c'est le seul rôle à qui
+  // le bloc Excel — et donc l'envoi — est proposé.
+  const schedule =
+    user.role === "super_admin" ? await getReportSchedule() : null;
 
   return (
     <>
@@ -26,12 +32,15 @@ export default async function RapportsPage() {
           <p className="mt-1 text-sm text-slate-600">
             ملف واحد يحتوي على ورقة لكل مؤطر، مع لوائح ناخبيه كاملة.
           </p>
-          <a
-            href="/api/export/excel"
-            className="mt-4 inline-flex min-h-touch items-center justify-center rounded-lg bg-brand-600 px-4 font-medium text-white hover:bg-brand-700"
-          >
-            تحميل ملف Excel
-          </a>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start">
+            <a
+              href="/api/export/excel"
+              className="inline-flex min-h-touch items-center justify-center rounded-lg bg-brand-600 px-4 font-medium text-white hover:bg-brand-700"
+            >
+              تحميل ملف Excel
+            </a>
+            <SendReportButton recipient={schedule?.email ?? null} />
+          </div>
         </section>
       )}
 

@@ -7,8 +7,10 @@ import { getSessionUser } from "@/lib/auth";
 import {
   MAX_INACTIVITY_TIMEOUT_MINUTES,
   MIN_INACTIVITY_TIMEOUT_MINUTES,
+  REPORT_FREQUENCY_LABELS,
 } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
+import type { ReportFrequency } from "@/types";
 
 export type SettingsFormState = {
   error?: string;
@@ -28,6 +30,73 @@ const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
 const BUCKET =
   process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? "public-assets";
+
+/**
+ * Contrôle volontairement permissif : une adresse doit comporter un `@`, un
+ * domaine et pas d'espace. Valider finement une adresse en expression
+ * rationnelle est un piège connu — c'est l'acheminement qui tranche.
+ */
+const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+
+type ReportSchedule = {
+  report_email: string | null;
+  report_frequency: ReportFrequency;
+  report_weekday: number | null;
+  report_day_of_month: number | null;
+  report_enabled: boolean;
+};
+
+/**
+ * Lit et valide la planification d'envoi soumise par le formulaire.
+ *
+ * Renvoie un message arabe plutôt qu'un objet en cas d'incohérence : ces règles
+ * doublent les contraintes CHECK de la base, dont les messages d'erreur ne sont
+ * pas montrables à un utilisateur.
+ */
+function readSchedule(formData: FormData): ReportSchedule | string {
+  const email = String(formData.get("report_email") ?? "").trim();
+  if (email && !EMAIL.test(email)) {
+    return "عنوان البريد الإلكتروني غير صالح";
+  }
+
+  const frequency = String(formData.get("report_frequency") ?? "daily");
+  if (!(frequency in REPORT_FREQUENCY_LABELS)) {
+    return "وتيرة الإرسال غير صالحة";
+  }
+
+  // Une case décochée n'est pas envoyée : son absence vaut « désactivé ».
+  const enabled = formData.get("report_enabled") != null;
+  if (enabled && !email) {
+    return "لا يمكن تفعيل الإرسال التلقائي بدون عنوان بريد إلكتروني";
+  }
+
+  // Les champs de jour n'existent dans le formulaire que pour la fréquence
+  // correspondante : leur absence ailleurs remet la colonne à NULL, ce
+  // qu'exige la contrainte de cohérence en base.
+  let weekday: number | null = null;
+  if (frequency === "weekly") {
+    weekday = Number(formData.get("report_weekday"));
+    if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
+      return "يوم الأسبوع غير صالح";
+    }
+  }
+
+  let dayOfMonth: number | null = null;
+  if (frequency === "monthly") {
+    dayOfMonth = Number(formData.get("report_day_of_month"));
+    if (!Number.isInteger(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 31) {
+      return "يوم الشهر غير صالح";
+    }
+  }
+
+  return {
+    report_email: email || null,
+    report_frequency: frequency as ReportFrequency,
+    report_weekday: weekday,
+    report_day_of_month: dayOfMonth,
+    report_enabled: enabled,
+  };
+}
 
 export async function updateSettings(
   _prevState: SettingsFormState,
@@ -65,6 +134,9 @@ export async function updateSettings(
       error: `مدة الخمول يجب أن تكون عدداً بين ${MIN_INACTIVITY_TIMEOUT_MINUTES} و ${MAX_INACTIVITY_TIMEOUT_MINUTES} دقيقة`,
     };
   }
+
+  const schedule = readSchedule(formData);
+  if (typeof schedule === "string") return { error: schedule };
 
   const supabase = await createClient();
 
@@ -126,6 +198,7 @@ export async function updateSettings(
       logo_url: logoUrl,
       primary_color: primaryColor,
       inactivity_timeout_minutes: timeoutMinutes,
+      ...schedule,
     })
     .eq("id", current.id);
 

@@ -1,7 +1,20 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { createClient } from "@/lib/supabase/server";
-import type { Cadre, ElecteurWithOrder } from "@/types";
+import type { Cadre, Database, ElecteurWithOrder } from "@/types";
+
+/**
+ * Client à utiliser pour lire les données du rapport.
+ *
+ * Paramétrable parce que l'export a désormais deux appelants aux droits
+ * différents : l'interface, où le client porte la session de l'utilisateur et
+ * subit le RLS, et la tâche planifiée, qui s'exécute sans session et passe donc
+ * par le client administrateur. Sans ce paramètre, le rapport automatique
+ * serait vide.
+ */
+export type ReportClient = SupabaseClient<Database>;
 
 export type ReportSettings = {
   partyName: string;
@@ -20,8 +33,10 @@ export type CadreReport = {
  * Les valeurs par défaut évitent un en-tête troué tant que la page
  * « الإعدادات » n'a pas été renseignée.
  */
-export async function getReportSettings(): Promise<ReportSettings> {
-  const supabase = await createClient();
+export async function getReportSettings(
+  client?: ReportClient,
+): Promise<ReportSettings> {
+  const supabase = client ?? (await createClient());
   const { data } = await supabase
     .from("settings")
     .select("party_name, territorial_community, logo_url")
@@ -63,8 +78,10 @@ export async function getCadreReport(
 }
 
 /** Tous les cadres visibles, avec leurs électeurs — une feuille Excel chacun. */
-export async function getAllCadreReports(): Promise<CadreReport[]> {
-  const supabase = await createClient();
+export async function getAllCadreReports(
+  client?: ReportClient,
+): Promise<CadreReport[]> {
+  const supabase = client ?? (await createClient());
 
   const { data: cadres } = await supabase
     .from("cadres")

@@ -1,6 +1,11 @@
 import type { Database, Tables, UserRole } from "@/types/database";
 
-export type { Database, Json, UserRole } from "@/types/database";
+export type {
+  Database,
+  Json,
+  ReportFrequency,
+  UserRole,
+} from "@/types/database";
 export type { Tables, TablesInsert, TablesUpdate } from "@/types/database";
 
 /** Alias métier — évitent `Tables<"...">` dispersé dans les composants. */
