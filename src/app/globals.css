@@ -102,6 +102,16 @@
     @apply outline-2 outline-offset-2 outline-brand-600;
   }
 
+  /* WebKit dessine sa propre croix d'effacement dans `input[type=search]`.
+     Elle est masquée au profit du bouton de `SearchInput` : le natif n'existe
+     pas sur Firefox, ne se positionne pas en RTL et reste sous les 44px
+     tactiles. Sans cela, deux croix se superposeraient. */
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
   /* Confort tactile terrain : pas de cible < 44px sur les contrôles */
   button,
   [role="button"],
