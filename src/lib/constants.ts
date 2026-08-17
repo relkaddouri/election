@@ -125,13 +125,31 @@ export const PUBLIC_ROUTES: readonly string[] = ["/login"];
 /**
  * Déconnexion automatique après inactivité.
  *
- * Le délai porte sur l'absence totale d'interaction ; l'avertissement laisse
- * une minute pour réagir avant la coupure.
+ * Le délai est réglable par le super_admin dans « الإعدادات » et stocké dans
+ * `settings.inactivity_timeout_minutes` ; cette constante ne sert que de repli
+ * quand rien n'est configuré.
  */
-export const INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+export const DEFAULT_INACTIVITY_TIMEOUT_MINUTES = 15;
+
+/** Bornes reprises de la contrainte CHECK en base. */
+export const MIN_INACTIVITY_TIMEOUT_MINUTES = 1;
+export const MAX_INACTIVITY_TIMEOUT_MINUTES = 480;
+
+/**
+ * Durée de l'avertissement avant la coupure.
+ *
+ * Fixe, comme le prévoit le cahier des charges. Le garde la ramène à la moitié
+ * du délai total si celui-ci est plus court : sur un délai d'une minute, un
+ * avertissement d'une minute s'afficherait dès la connexion.
+ */
 export const INACTIVITY_WARNING_MS = 60 * 1000;
 
-/** Motif de déconnexion transmis à la page de connexion. */
+/**
+ * Motif de déconnexion transmis à la page de connexion.
+ *
+ * Passé en paramètre d'URL plutôt qu'en état : la déconnexion s'accompagne
+ * d'une redirection serveur, qui ne conserve aucun état client.
+ */
 export const LOGOUT_REASON_PARAM = "raison";
 export const INACTIVITY_REASON = "inactivite";
 

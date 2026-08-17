@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { logAudit } from "@/lib/audit";
 import { getSessionUser } from "@/lib/auth";
+import {
+  MAX_INACTIVITY_TIMEOUT_MINUTES,
+  MIN_INACTIVITY_TIMEOUT_MINUTES,
+} from "@/lib/constants";
 import { createClient } from "@/lib/supabase/server";
 
 export type SettingsFormState = {
@@ -44,6 +48,23 @@ export async function updateSettings(
   // plutôt que de faire échouer l'enregistrement sur la contrainte en base.
   const rawColor = String(formData.get("primary_color") ?? "").trim();
   const primaryColor = /^#[0-9a-fA-F]{6}$/.test(rawColor) ? rawColor : null;
+
+  // Refusé plutôt que ramené silencieusement à la valeur par défaut : un
+  // super_admin qui tape « 30 minutes » doit être averti s'il s'est trompé,
+  // pas découvrir plus tard que la session coupe au bout de 15.
+  const rawTimeout = String(
+    formData.get("inactivity_timeout_minutes") ?? "",
+  ).trim();
+  const timeoutMinutes = Number(rawTimeout);
+  if (
+    !Number.isInteger(timeoutMinutes) ||
+    timeoutMinutes < MIN_INACTIVITY_TIMEOUT_MINUTES ||
+    timeoutMinutes > MAX_INACTIVITY_TIMEOUT_MINUTES
+  ) {
+    return {
+      error: `مدة الخمول يجب أن تكون عدداً بين ${MIN_INACTIVITY_TIMEOUT_MINUTES} و ${MAX_INACTIVITY_TIMEOUT_MINUTES} دقيقة`,
+    };
+  }
 
   const supabase = await createClient();
 
@@ -104,6 +125,7 @@ export async function updateSettings(
       territorial_community: community || null,
       logo_url: logoUrl,
       primary_color: primaryColor,
+      inactivity_timeout_minutes: timeoutMinutes,
     })
     .eq("id", current.id);
 
@@ -114,6 +136,10 @@ export async function updateSettings(
   }
 
   await logAudit("update", "settings", current.id);
-  revalidatePath("/parametres");
+  // Portée « layout » depuis la racine : ces réglages sont consommés par les
+  // layouts (couleur et logo par la racine, délai d'inactivité par celui des
+  // pages authentifiées), pas seulement par la page des paramètres. Sans cela,
+  // le cache de routeur du navigateur garderait l'ancienne valeur.
+  revalidatePath("/", "layout");
   return { success: true };
 }

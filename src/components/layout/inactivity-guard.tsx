@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { signOutForInactivity } from "@/lib/actions/auth";
-import { INACTIVITY_TIMEOUT_MS, INACTIVITY_WARNING_MS } from "@/lib/constants";
+import { INACTIVITY_WARNING_MS } from "@/lib/constants";
 import { APP_SCROLL_ID } from "@/lib/scroll-lock";
 
 /**
@@ -39,8 +39,10 @@ function readLastActivity(): number {
  *
  * Monté dans le layout des pages authentifiées seulement : la page de
  * connexion n'a pas de session à faire expirer.
+ *
+ * @param timeoutMs Délai réglé dans « الإعدادات », résolu côté serveur.
  */
-export function InactivityGuard() {
+export function InactivityGuard({ timeoutMs }: { timeoutMs: number }) {
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   // Évite d'enchaîner plusieurs déconnexions si un tick se déclenche pendant
   // que la précédente est encore en vol.
@@ -48,6 +50,11 @@ export function InactivityGuard() {
 
   useEffect(() => {
     let lastWrite = 0;
+
+    // Sur un délai très court — le minimum réglable est d'une minute —
+    // l'avertissement d'une minute s'afficherait dès la connexion. Il est alors
+    // ramené à la moitié du délai, pour qu'il reste un avertissement.
+    const warningMs = Math.min(INACTIVITY_WARNING_MS, timeoutMs / 2);
 
     const noteActivity = () => {
       const now = Date.now();
@@ -71,7 +78,7 @@ export function InactivityGuard() {
     const tick = setInterval(() => {
       const idle = Date.now() - readLastActivity();
 
-      if (idle >= INACTIVITY_TIMEOUT_MS) {
+      if (idle >= timeoutMs) {
         if (loggingOut.current) return;
         loggingOut.current = true;
         window.localStorage.removeItem(STORAGE_KEY);
@@ -79,11 +86,11 @@ export function InactivityGuard() {
         return;
       }
 
-      const remaining = INACTIVITY_TIMEOUT_MS - idle;
+      const remaining = timeoutMs - idle;
       // `null` referme l'avertissement dès qu'une activité — y compris dans un
       // autre onglet — a repoussé l'échéance.
       setSecondsLeft(
-        remaining <= INACTIVITY_WARNING_MS ? Math.ceil(remaining / 1000) : null,
+        remaining <= warningMs ? Math.ceil(remaining / 1000) : null,
       );
     }, TICK_MS);
 
@@ -97,7 +104,7 @@ export function InactivityGuard() {
     // Comparer par mesure du temps écoulé plutôt que par minuteurs enchaînés :
     // une mise en veille de la machine fausserait un `setTimeout`, alors qu'un
     // écart d'horodatages reste juste au réveil.
-  }, []);
+  }, [timeoutMs]);
 
   if (secondsLeft === null) return null;
 
