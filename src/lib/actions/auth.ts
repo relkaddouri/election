@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { homeRouteForRole } from "@/lib/constants";
+import {
+  homeRouteForRole,
+  INACTIVITY_REASON,
+  LOGOUT_REASON_PARAM,
+} from "@/lib/constants";
 import { loginIdentifierToEmail } from "@/lib/username";
 import { createClient } from "@/lib/supabase/server";
 
@@ -84,4 +88,21 @@ export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
   redirect("/login");
+}
+
+/**
+ * Déconnexion déclenchée par l'expiration du délai d'inactivité.
+ *
+ * Action distincte plutôt qu'un paramètre ajouté à `signOut` : celui-ci est
+ * employé comme `action` de formulaire et reçoit donc un `FormData` en premier
+ * argument — un paramètre s'y glisserait silencieusement.
+ *
+ * Le motif transite par l'URL pour que la page de connexion explique la
+ * déconnexion, au lieu de laisser croire à une session perdue.
+ */
+export async function signOutForInactivity(): Promise<void> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  revalidatePath("/", "layout");
+  redirect(`/login?${LOGOUT_REASON_PARAM}=${INACTIVITY_REASON}`);
 }

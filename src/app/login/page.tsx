@@ -2,16 +2,21 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 import { LoginForm } from "@/app/login/login-form";
+import { INACTIVITY_REASON, LOGOUT_REASON_PARAM } from "@/lib/constants";
 import { getBranding } from "@/lib/data/branding";
 
 export const metadata: Metadata = {
   title: "تسجيل الدخول",
 };
 
-export default async function LoginPage() {
+export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   // Lisible sans session : une policy autorise le rôle `anon` à lire les
   // seules colonnes d'habillage de `settings`.
   const { partyName, logoUrl } = await getBranding();
+
+  // Explique la déconnexion au lieu de laisser croire à une session perdue.
+  const parDéconnexionAutomatique =
+    (await searchParams)[LOGOUT_REASON_PARAM] === INACTIVITY_REASON;
 
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-10">
@@ -44,6 +49,15 @@ export default async function LoginPage() {
             سجّل الدخول للمتابعة إلى النظام
           </p>
         </header>
+
+        {parDéconnexionAutomatique && (
+          <p
+            role="status"
+            className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-center text-sm text-amber-900"
+          >
+            تم تسجيل الخروج بسبب عدم النشاط
+          </p>
+        )}
 
         <div className="rounded-xl border border-line bg-surface p-5 sm:p-6">
           <LoginForm />
